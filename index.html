@@ -282,7 +282,6 @@
                         <span id="authStatus" class="px-3 py-2 text-white/80">未登录</span>
                         <button id="btnLogin" class="bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-sm" onclick="openLogin()">登录</button>
                         <button id="btnLogout" class="hidden bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-sm" onclick="supaLogout()">退出</button>
-                        <button id="btnCopyUID" class="hidden bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-sm" onclick="copyUserId()">复制用户ID</button>
                         <button id="btnAdmin" class="hidden bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-sm" onclick="openAdmin()">权限管理</button>
                         <button id="btnShare" class="hidden bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-sm" onclick="openShare()">共享链接</button>
                         <select class="bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white backdrop-blur-sm" id="userSelector"></select>
@@ -406,6 +405,12 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
                                 <span>生成报表</span>
+                            </button>
+                            <button class="quick-action-btn w-full flex items-center justify-center space-x-2" onclick="requestAccessForCurrentCompany()">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.657-1.343-3-3-3S6 9.343 6 11s1.343 3 3 3 3 1.343 3 3m0-6h6"></path>
+                                </svg>
+                                <span>申请加入当前公司</span>
                             </button>
                             
                         </div>
@@ -539,14 +544,13 @@
                 <div class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">用户ID</label>
-                            <input id="adminUserIdInput" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="粘贴用户UUID">
-                            <p class="text-xs text-gray-500 mt-2">提示：让员工登录后点击“复制用户ID”，再粘贴到此处</p>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">员工邮箱</label>
+                            <input id="adminEmailInput" type="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="输入员工邮箱">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">快捷操作</label>
                             <div class="flex space-x-2">
-                                <button class="px-3 py-2 bg-blue-600 text-white rounded-lg" onclick="adminLoadAssignments()">加载授权</button>
+                                <button class="px-3 py-2 bg-blue-600 text-white rounded-lg" onclick="adminLoadInvites()">加载待授权</button>
                                 <button class="px-3 py-2 bg-green-600 text-white rounded-lg" onclick="adminGrantAll()">授权全部公司</button>
                                 <button class="px-3 py-2 bg-red-600 text-white rounded-lg" onclick="adminRevokeAll()">取消全部授权</button>
                             </div>
@@ -558,7 +562,7 @@
                     </div>
                     <div class="flex justify-end space-x-3 pt-4">
                         <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50" onclick="closeAdmin()">关闭</button>
-                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onclick="adminSavePermissions()">保存授权</button>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onclick="adminSaveInvites()">保存授权</button>
                     </div>
                 </div>
             </div>
@@ -830,12 +834,12 @@ document.addEventListener('DOMContentLoaded', function() {
         let supaUser = null;
         let remoteAllowedCompanies = null;
         function getSupa() { const url = localStorage.getItem('supabase_url'); const key = localStorage.getItem('supabase_anon_key'); if (!url || !key || typeof supabase === 'undefined') return null; if (supaClient) return supaClient; try { supaClient = supabase.createClient(url, key); return supaClient; } catch(e) { return null; } }
-        async function initAuth() { const c = getSupa(); if (!c) { updateAuthUI(); return; } const { data } = await c.auth.getUser(); supaUser = data && data.user ? data.user : null; await fetchRemoteAllowed(); updateAuthUI(); applyUserPermissions(); refreshDashboard(); loadRecentTransactions(); updateCashFlowChart(cashFlowMode); }
+        async function initAuth() { const c = getSupa(); if (!c) { updateAuthUI(); return; } const { data } = await c.auth.getUser(); supaUser = data && data.user ? data.user : null; await autoClaimInvites(); await fetchRemoteAllowed(); updateAuthUI(); applyUserPermissions(); refreshDashboard(); loadRecentTransactions(); updateCashFlowChart(cashFlowMode); }
         function openLogin() { document.getElementById('loginModal').classList.remove('hidden'); }
         function closeLogin() { document.getElementById('loginModal').classList.add('hidden'); }
         async function supaLogout() { const c = getSupa(); if (!c) return; await c.auth.signOut(); supaUser = null; remoteAllowedCompanies = null; updateAuthUI(); applyUserPermissions(); refreshDashboard(); loadRecentTransactions(); updateCashFlowChart(cashFlowMode); }
         async function fetchRemoteAllowed() { const c = getSupa(); if (!c || !supaUser) { remoteAllowedCompanies = null; return; } const { data } = await c.from('user_company_access').select('company_id').eq('user_id', supaUser.id); remoteAllowedCompanies = (data || []).map(x => x.company_id); }
-        function updateAuthUI() { const el = document.getElementById('authStatus'); const btnL = document.getElementById('btnLogin'); const btnO = document.getElementById('btnLogout'); const btnC = document.getElementById('btnCopyUID'); const btnA = document.getElementById('btnAdmin'); const btnS = document.getElementById('btnSettings'); const btnShare = document.getElementById('btnShare'); const allCompanies = Store.getCompanies(); const isAdmin = remoteAllowedCompanies && remoteAllowedCompanies.length === allCompanies.length; if (supaUser) { el.textContent = supaUser.email || '已登录'; btnL.classList.add('hidden'); btnO.classList.remove('hidden'); btnC.classList.remove('hidden'); btnA.classList.remove('hidden'); btnShare.classList.remove('hidden'); if (isAdmin) btnS.classList.remove('hidden'); else btnS.classList.add('hidden'); } else { el.textContent = '未登录'; btnL.classList.remove('hidden'); btnO.classList.add('hidden'); btnC.classList.add('hidden'); btnA.classList.add('hidden'); btnShare.classList.add('hidden'); btnS.classList.add('hidden'); } }
+        function updateAuthUI() { const el = document.getElementById('authStatus'); const btnL = document.getElementById('btnLogin'); const btnO = document.getElementById('btnLogout'); const btnA = document.getElementById('btnAdmin'); const btnS = document.getElementById('btnSettings'); const btnShare = document.getElementById('btnShare'); const allCompanies = Store.getCompanies(); const isAdmin = remoteAllowedCompanies && remoteAllowedCompanies.length === allCompanies.length; if (supaUser) { el.textContent = supaUser.email || '已登录'; btnL.classList.add('hidden'); btnO.classList.remove('hidden'); btnA.classList.remove('hidden'); btnShare.classList.remove('hidden'); if (isAdmin) btnS.classList.remove('hidden'); else btnS.classList.add('hidden'); } else { el.textContent = '未登录'; btnL.classList.remove('hidden'); btnO.classList.add('hidden'); btnA.classList.add('hidden'); btnShare.classList.add('hidden'); btnS.classList.add('hidden'); } }
 
         function openShare() { const modal = document.getElementById('shareModal'); modal.classList.remove('hidden'); const base = window.location.origin + window.location.pathname; document.getElementById('shareBaseUrl').value = base; const url = localStorage.getItem('supabase_url') || ''; const key = localStorage.getItem('supabase_anon_key') || ''; const cfg = { supabase_url: url, supabase_anon_key: key }; try { const b64 = encodeURIComponent(btoa(JSON.stringify(cfg))); const full = base + '#config_b64=' + b64; document.getElementById('shareUrlOutput').value = full; } catch(e) { document.getElementById('shareUrlOutput').value = base; } }
         function closeShare() { document.getElementById('shareModal').classList.add('hidden'); }
@@ -845,11 +849,13 @@ document.addEventListener('DOMContentLoaded', function() {
         function openAdmin() { const modal = document.getElementById('adminModal'); modal.classList.remove('hidden'); renderAdminCompanies(); }
         function closeAdmin() { document.getElementById('adminModal').classList.add('hidden'); }
         function renderAdminCompanies() { const container = document.getElementById('adminCompaniesContainer'); const companies = Store.getCompanies(); container.innerHTML = companies.map(c => `<label class="flex items-center space-x-2 p-2 border rounded-lg"><input type="checkbox" class="admin-company-checkbox" value="${c.id}"><span>${c.name}</span></label>`).join(''); }
-        async function adminLoadAssignments() { const c = getSupa(); const uid = document.getElementById('adminUserIdInput').value.trim(); if (!c || !uid) { showNotification('请先输入用户ID', 'error'); return; } const { data, error } = await c.from('user_company_access').select('company_id').eq('user_id', uid); if (error) { showNotification('加载授权失败', 'error'); return; } const set = new Set((data||[]).map(x=>x.company_id)); document.querySelectorAll('.admin-company-checkbox').forEach(ch => { ch.checked = set.has(ch.value); }); showNotification('已加载当前授权', 'success'); }
-        async function adminSavePermissions() { const c = getSupa(); const uid = document.getElementById('adminUserIdInput').value.trim(); if (!c || !uid) { showNotification('请先输入用户ID', 'error'); return; } const selected = Array.from(document.querySelectorAll('.admin-company-checkbox')).filter(ch=>ch.checked).map(ch=>ch.value); await c.from('user_company_access').delete().eq('user_id', uid); if (selected.length) { const rows = selected.map(cid => ({ user_id: uid, company_id: cid })); const { error } = await c.from('user_company_access').insert(rows); if (error) { showNotification('保存授权失败', 'error'); return; } } showNotification('授权已保存', 'success'); }
+        async function adminLoadInvites() { const c = getSupa(); const email = document.getElementById('adminEmailInput').value.trim(); if (!c || !email) { showNotification('请先输入员工邮箱', 'error'); return; } const { data, error } = await c.from('pending_invites').select('company_id').eq('email', email); if (error) { showNotification('加载待授权失败', 'error'); return; } const set = new Set((data||[]).map(x=>x.company_id)); document.querySelectorAll('.admin-company-checkbox').forEach(ch => { ch.checked = set.has(ch.value); }); showNotification('已加载待授权', 'success'); }
+        async function adminSaveInvites() { const c = getSupa(); const email = document.getElementById('adminEmailInput').value.trim(); if (!c || !email) { showNotification('请先输入员工邮箱', 'error'); return; } const selected = Array.from(document.querySelectorAll('.admin-company-checkbox')).filter(ch=>ch.checked).map(ch=>ch.value); await c.from('pending_invites').delete().eq('email', email); if (selected.length) { const rows = selected.map(cid => ({ email: email, company_id: cid })); const { error } = await c.from('pending_invites').insert(rows); if (error) { showNotification('保存授权失败', 'error'); return; } } showNotification('授权已保存', 'success'); }
         async function adminGrantAll() { const companies = Store.getCompanies().map(c=>c.id); document.querySelectorAll('.admin-company-checkbox').forEach(ch => { ch.checked = companies.includes(ch.value); }); }
         async function adminRevokeAll() { document.querySelectorAll('.admin-company-checkbox').forEach(ch => { ch.checked = false; }); }
-        function copyUserId() { if (!supaUser) { showNotification('请先登录', 'error'); return; } try { navigator.clipboard.writeText(supaUser.id); showNotification('用户ID已复制', 'success'); } catch(e) { showNotification('复制失败', 'error'); } }
+        async function autoClaimInvites() { const c = getSupa(); if (!c || !supaUser) return; const email = supaUser.email || ''; if (!email) return; const { data } = await c.from('pending_invites').select('company_id').eq('email', email); if (Array.isArray(data) && data.length) { const rows = data.map(x => ({ user_id: supaUser.id, company_id: x.company_id })); await c.from('user_company_access').insert(rows); await c.from('pending_invites').delete().eq('email', email); }
+        }
+        async function requestAccessForCurrentCompany() { const c = getSupa(); if (!c || !supaUser) { showNotification('请先登录', 'error'); return; } const cid = document.getElementById('companySelector').value; if (!cid || cid === 'all') { showNotification('请选择分公司', 'error'); return; } const email = supaUser.email || ''; if (!email) { showNotification('缺少邮箱', 'error'); return; } const { error } = await c.from('pending_invites').insert({ email, company_id: cid }); if (error) { showNotification('申请失败', 'error'); return; } showNotification('已提交申请，管理员批准后生效', 'success'); }
         
         // 数字动画
         function animateNumbers(totals) {
@@ -963,6 +969,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     supaUser = data.user;
                 }
+                await autoClaimInvites();
                 await fetchRemoteAllowed();
                 closeLogin();
                 updateAuthUI();
