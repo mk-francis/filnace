@@ -969,6 +969,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     supaUser = data.user;
                 }
+                try { const { data: sd2 } = await c.auth.getSession(); if (sd2 && sd2.session) { localStorage.setItem('sb_rt', sd2.session.refresh_token || ''); localStorage.setItem('sb_at', sd2.session.access_token || ''); } } catch(e) {}
                 await autoClaimInvites();
                 await fetchRemoteAllowed();
                 closeLogin();
