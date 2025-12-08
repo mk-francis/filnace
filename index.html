@@ -833,7 +833,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let supaClient = null;
         let supaUser = null;
         let remoteAllowedCompanies = null;
-        function getSupa() { const url = localStorage.getItem('supabase_url'); const key = localStorage.getItem('supabase_anon_key'); if (!url || !key || typeof supabase === 'undefined') return null; if (supaClient) return supaClient; try { supaClient = supabase.createClient(url, key); return supaClient; } catch(e) { return null; } }
+        function getSupa() { const url = localStorage.getItem('supabase_url'); const key = localStorage.getItem('supabase_anon_key'); if (!url || !key || typeof supabase === 'undefined') return null; if (supaClient) return supaClient; try { supaClient = supabase.createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } }); return supaClient; } catch(e) { return null; } }
         async function initAuth() { const c = getSupa(); if (!c) { updateAuthUI(); return; } const { data } = await c.auth.getUser(); supaUser = data && data.user ? data.user : null; await autoClaimInvites(); await fetchRemoteAllowed(); updateAuthUI(); applyUserPermissions(); refreshDashboard(); loadRecentTransactions(); updateCashFlowChart(cashFlowMode); }
         function openLogin() { document.getElementById('loginModal').classList.remove('hidden'); }
         function closeLogin() { document.getElementById('loginModal').classList.add('hidden'); }
