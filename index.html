@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>财务管理系统 - 智能仪表板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/store.js?v=2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide.min.css">
+    <style>
+        :root {
+            --primary-blue: #1e3a8a;
+            --secondary-gray: #475569;
+            --accent-gold: #f59e0b;
+            --bg-light: #f8fafc;
+            --success-green: #10b981;
+            --warning-red: #ef4444;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .title-font {
+            font-family: 'Noto Serif SC', serif;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-8px) rotateX(5deg);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+        
+        .number-counter {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        
+        .floating-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .content-layer {
+            position: relative;
+            z-index: 10;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #f59e0b, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .sidebar-item {
+            transition: all 0.3s ease;
+            border-radius: 12px;
+            margin: 4px 0;
+        }
+        
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(8px);
+        }
+        
+        .sidebar-item.active {
+            background: rgba(245, 158, 11, 0.3);
+            border-left: 4px solid var(--accent-gold);
+        }
+        
+        .metric-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.4s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+        }
+        
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .quick-action-btn {
+            background: linear-gradient(135deg, var(--accent-gold), #f97316);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .quick-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--warning-red);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        
+        .progress-ring-circle {
+            transition: stroke-dashoffset 0.35s;
+            transform-origin: 50% 50%;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 浮动粒子背景 -->
+    <div class="floating-particles" id="particles-container"></div>
+    
+    <!-- 主要内容 -->
+    <div class="content-layer">
+        <!-- 移动端菜单按钮 -->
+        <button class="md:hidden fixed top-4 left-4 z-50 bg-white/20 backdrop-blur-sm p-3 rounded-lg" onclick="toggleSidebar()">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+        
+        <!-- 侧边导航栏 -->
+        <div class="sidebar fixed left-0 top-0 w-64 h-full bg-white/10 backdrop-blur-lg border-r border-white/20 z-40" id="sidebar">
+            <div class="p-6">
+                <div class="flex items-center space-x-3 mb-8">
+                    <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-white font-bold text-lg title-font">财务管理系统</h1>
+                        <p class="text-white/70 text-sm">智能财务分析平台</p>
+                    </div>
+                </div>
+                
+                <nav class="space-y-2">
+                    <a href="index.html" class="sidebar-item active flex items-center space-x-3 px-4 py-3 text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v0a2 2 0 01-2 2H10a2 2 0 01-2-2v0z"></path>
+                        </svg>
+                        <span>仪表板</span>
+                    </a>
+                    
+                    <a href="transactions.html" class="sidebar-item flex items-center space-x-3 px-4 py-3 text-white/80 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <span>交易记录</span>
+                    </a>
+                    
+                    
+                    <a href="reports.html" class="sidebar-item flex items-center space-x-3 px-4 py-3 text-white/80 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span>财务报表</span>
+                    </a>
+                </nav>
+            </div>
+            
+            <!-- 用户信息 -->
+            <div class="absolute bottom-6 left-6 right-6">
+                <div class="glass-effect rounded-xl p-4">
+                    <div class="flex items-center space-x-3">
+                        <img src="resources/images/user-avatar.jpg" alt="用户头像" class="w-10 h-10 rounded-full object-cover">
+                        <div>
+                            <p id="currentUserName" class="text-white font-medium text-sm">张经理</p>
+                            <p class="text-white/70 text-xs">财务总监</p>
+                        </div>
+                        <button class="ml-auto bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-xs" onclick="openAdmin()">权限管理</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主内容区域 -->
+        <div class="ml-0 md:ml-64 min-h-screen">
+            <!-- 顶部导航 -->
+            <header class="bg-white/10 backdrop-blur-lg border-b border-white/20 p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center space-x-4 mb-2">
+                            <h2 class="text-2xl font-bold text-white title-font">财务仪表板</h2>
+                            <div class="flex items-center space-x-2">
+                                <select class="bg-white border border-white/70 rounded-lg px-3 py-1 text-gray-900 shadow-sm text-sm" id="groupSelector">
+                                    <option value="group1">OK集团</option>
+                                </select>
+                                <select class="bg-white border border-white/70 rounded-lg px-3 py-1 text-gray-900 shadow-sm text-sm" id="companySelector">
+                                    <option value="all">全部分公司</option>
+                                    <option value="company1">ABC Auto Repair Shop</option>
+                                    <option value="company2">Custom Motors PH</option>
+                                    <option value="company3">CoolTech Aircon Services</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="text-white/70 text-sm mt-1">实时监控企业财务状况</p>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <!-- 时间选择器 -->
+                        <select class="bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white backdrop-blur-sm" id="timeFilter">
+                            <option value="month">本月</option>
+                            <option value="quarter">本季度</option>
+                            <option value="year">本年度</option>
+                        </select>
+                        <span id="backendStatus" class="px-3 py-2 text-white/80">本地存储</span>
+                        <button id="btnSettings" class="bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-sm" onclick="openSettings()">后端设置</button>
+                        <span id="authStatus" class="px-3 py-2 text-white/80">未登录</span>
+                        <button id="btnLogin" class="bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-sm" onclick="openLogin()">登录</button>
+                        <button id="btnLogout" class="hidden bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-sm" onclick="supaLogout()">退出</button>
+                        <button id="btnCopyUID" class="hidden bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-sm" onclick="copyUserId()">复制用户ID</button>
+                        <button id="btnAdmin" class="hidden bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-sm" onclick="openAdmin()">权限管理</button>
+                        <button id="btnShare" class="hidden bg-white/20 p-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors text-white text-sm" onclick="openShare()">共享链接</button>
+                        <select class="bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white backdrop-blur-sm" id="userSelector"></select>
+                        
+                        <!-- 通知按钮 -->
+                        <div class="relative">
+                            <button class="bg-white/20 p-3 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                </svg>
+                            </button>
+                            <div class="notification-badge">3</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- 主要内容 -->
+            <main class="p-6">
+                <!-- 关键指标卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- 总收入 -->
+                    <div class="metric-card card-hover">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-3 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                </svg>
+                            </div>
+                            <span class="text-green-500 text-sm font-medium">+12.5%</span>
+                        </div>
+                        <h3 class="text-gray-600 text-sm font-medium mb-2">总收入</h3>
+                        <p class="text-3xl font-bold text-gray-900 number-counter" data-target="1256800">₱0</p>
+                        <p class="text-gray-500 text-xs mt-1">较上月增长</p>
+                    </div>
+                    
+                    <!-- 总支出 -->
+                    <div class="metric-card card-hover">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-3 bg-red-100 rounded-lg">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                                </svg>
+                            </div>
+                            <span class="text-red-500 text-sm font-medium">+8.3%</span>
+                        </div>
+                        <h3 class="text-gray-600 text-sm font-medium mb-2">总支出</h3>
+                        <p class="text-3xl font-bold text-gray-900 number-counter" data-target="892500">₱0</p>
+                        <p class="text-gray-500 text-xs mt-1">较上月增长</p>
+                    </div>
+                    
+                    <!-- 净利润 -->
+                    <div class="metric-card card-hover">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-3 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </div>
+                            <span class="text-green-500 text-sm font-medium">+15.2%</span>
+                        </div>
+                        <h3 class="text-gray-600 text-sm font-medium mb-2">净利润</h3>
+                        <p class="text-3xl font-bold text-gray-900 number-counter" data-target="364300">₱0</p>
+                        <p class="text-gray-500 text-xs mt-1">较上月增长</p>
+                    </div>
+                    
+                </div>
+                
+                <!-- 图表区域 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- 现金流趋势图 -->
+                    <div class="chart-container">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900">现金流趋势</h3>
+                            <div class="flex space-x-2">
+                                <button id="btnFlowIncome" class="px-3 py-1 text-sm bg-blue-100 text-blue-600 rounded-lg">收入</button>
+                                <button id="btnFlowExpense" class="px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded-lg">支出</button>
+                            </div>
+                        </div>
+                        <div id="cashFlowChart" style="height: 300px;"></div>
+                    </div>
+                    
+                    <!-- 收入支出比例 -->
+                    <div class="chart-container">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900">收支比例分析</h3>
+                            <select id="piePeriodSelector" class="text-sm border border-gray-300 rounded-lg px-3 py-1">
+                                <option>本月</option>
+                                <option>本季度</option>
+                                <option>本年度</option>
+                            </select>
+                        </div>
+                        <div id="incomeExpenseChart" style="height: 300px;"></div>
+                    </div>
+                </div>
+                
+                <!-- 快速操作和最近交易 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- 快速操作面板 -->
+                    <div class="chart-container">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-6">快速操作</h3>
+                        <div class="space-y-4">
+                            <button class="quick-action-btn w-full flex items-center justify-center space-x-2" onclick="showModal('addIncome')">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                <span>添加收入</span>
+                            </button>
+                            
+                            <button class="quick-action-btn w-full flex items-center justify-center space-x-2" onclick="showModal('addExpense')">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                                </svg>
+                                <span>记录支出</span>
+                            </button>
+                            
+                            
+                            <button class="quick-action-btn w-full flex items-center justify-center space-x-2" onclick="window.location.href='reports.html'">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <span>生成报表</span>
+                            </button>
+                            
+                        </div>
+                    </div>
+                    
+                    
+                    <!-- 最近交易 -->
+                    <div class="chart-container">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900">最近交易</h3>
+                            <a href="transactions.html" class="text-blue-600 text-sm hover:underline">查看全部</a>
+                        </div>
+                        <div class="space-y-4" id="recentTransactions">
+                            <!-- 动态加载最近交易 -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- 模态框 -->
+    <div id="modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-semibold text-gray-900" id="modalTitle">添加收入</h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <form id="modalForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">金额</label>
+                        <input type="number" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="请输入金额">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">公司</label>
+                        <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="modalCompanySelect"></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">类别</label>
+                        <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="modalCategorySelect"></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">描述</label>
+                        <textarea class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="3" placeholder="请输入描述"></textarea>
+                    </div>
+                    <div class="flex space-x-3 pt-4">
+                        <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">取消</button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">确认</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 后端设置模态框 -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-semibold text-gray-900">后端设置</h3>
+                    <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Supabase URL</label>
+                        <input id="supabaseUrlInput" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="https://xxxx.supabase.co">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Supabase 匿名密钥</label>
+                        <input id="supabaseKeyInput" type="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="复制 Supabase anon key">
+                    </div>
+                    <div class="flex space-x-3 pt-4">
+                        <button type="button" onclick="closeSettings()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">取消</button>
+                        <button type="button" onclick="saveBackendSettings()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loginModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-semibold text-gray-900">登录</h3>
+                    <button onclick="closeLogin()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">邮箱</label>
+                        <input id="loginEmail" type="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="you@example.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">密码</label>
+                        <input id="loginPassword" type="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="密码">
+                    </div>
+                    <div class="flex space-x-3 pt-4">
+                        <button type="button" onclick="closeLogin()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">取消</button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">登录</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-2xl">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-semibold text-gray-900">权限管理</h3>
+                    <button onclick="closeAdmin()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">用户ID</label>
+                            <input id="adminUserIdInput" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="粘贴用户UUID">
+                            <p class="text-xs text-gray-500 mt-2">提示：让员工登录后点击“复制用户ID”，再粘贴到此处</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">快捷操作</label>
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-2 bg-blue-600 text-white rounded-lg" onclick="adminLoadAssignments()">加载授权</button>
+                                <button class="px-3 py-2 bg-green-600 text-white rounded-lg" onclick="adminGrantAll()">授权全部公司</button>
+                                <button class="px-3 py-2 bg-red-600 text-white rounded-lg" onclick="adminRevokeAll()">取消全部授权</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">授权公司</label>
+                        <div id="adminCompaniesContainer" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50" onclick="closeAdmin()">关闭</button>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onclick="adminSavePermissions()">保存授权</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="shareModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-2xl">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-semibold text-gray-900">生成共享链接</h3>
+                    <button onclick="closeShare()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">基础网址（可改为外网隧道地址）</label>
+                        <input id="shareBaseUrl" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="https://your-public-url" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">共享链接</label>
+                        <textarea id="shareUrlOutput" class="w-full h-24 px-4 py-2 border border-gray-300 rounded-lg" readonly></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-2">
+                        <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50" onclick="closeShare()">关闭</button>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onclick="copyShareUrl()">复制链接</button>
+                        <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" onclick="downloadConfigJson()">导出 config.json</button>
+                    </div>
+                    <p class="text-xs text-gray-500">提示：员工首次访问如提示输入密码，请填本机公网IP（localtunnel 显示的 Tunnel Password）。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let cashFlowChart, incomeExpenseChart;
+        let currentGroup = 'group1';
+        let currentCompany = 'all';
+        let currentPeriod = 'month';
+        let currentModalType = 'addIncome';
+        
+        // 初始化
+document.addEventListener('DOMContentLoaded', function() {
+            Store.initSeed();
+            initParticles();
+            initCharts();
+            setupEventListeners();
+            initUserSelector();
+            applyUserPermissions();
+            initBackend();
+            initAuth();
+            currentGroup = document.getElementById('groupSelector').value || 'group1';
+            currentCompany = document.getElementById('companySelector').value || 'all';
+            currentPeriod = document.getElementById('timeFilter').value || 'month';
+            refreshDashboard();
+            loadRecentTransactions();
+        });
+        
+        // 初始化粒子背景
+        function initParticles() {
+            const app = new PIXI.Application({
+                width: window.innerWidth,
+                height: window.innerHeight,
+                backgroundColor: 0x000000,
+                backgroundAlpha: 0,
+                antialias: true
+            });
+            
+            document.getElementById('particles-container').appendChild(app.view);
+            
+            // 创建粒子容器
+            const particleContainer = new PIXI.Container();
+            app.stage.addChild(particleContainer);
+            
+            // 创建粒子
+            const particles = [];
+            for (let i = 0; i < 50; i++) {
+                const particle = new PIXI.Graphics();
+                particle.beginFill(0xffffff, 0.1);
+                particle.drawCircle(0, 0, Math.random() * 3 + 1);
+                particle.endFill();
+                
+                particle.x = Math.random() * app.screen.width;
+                particle.y = Math.random() * app.screen.height;
+                particle.vx = (Math.random() - 0.5) * 0.5;
+                particle.vy = (Math.random() - 0.5) * 0.5;
+                
+                particles.push(particle);
+                particleContainer.addChild(particle);
+            }
+            
+            // 动画循环
+            app.ticker.add(() => {
+                particles.forEach(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    
+                    if (particle.x < 0) particle.x = app.screen.width;
+                    if (particle.x > app.screen.width) particle.x = 0;
+                    if (particle.y < 0) particle.y = app.screen.height;
+                    if (particle.y > app.screen.height) particle.y = 0;
+                });
+            });
+            
+            // 响应式调整
+            window.addEventListener('resize', () => {
+                app.renderer.resize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        // 初始化图表
+        function initCharts() {
+            // 现金流趋势图
+            cashFlowChart = echarts.init(document.getElementById('cashFlowChart'));
+            const cashFlowOption = {
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    borderColor: '#e5e7eb',
+                    textStyle: { color: '#374151' }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ['1月', '2月', '3月', '4月', '5月', '6月'],
+                    axisLine: { lineStyle: { color: '#e5e7eb' } },
+                    axisTick: { lineStyle: { color: '#e5e7eb' } },
+                    axisLabel: { color: '#6b7280' }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: { lineStyle: { color: '#e5e7eb' } },
+                    axisTick: { lineStyle: { color: '#e5e7eb' } },
+                    axisLabel: { color: '#6b7280' },
+                    splitLine: { lineStyle: { color: '#f3f4f6' } }
+                },
+                series: []
+            };
+            cashFlowChart.setOption(cashFlowOption);
+            updateCashFlowChart('income');
+            
+            // 收支比例饼图
+            incomeExpenseChart = echarts.init(document.getElementById('incomeExpenseChart'));
+            const dash = (currentCompany === 'all' ? Store.aggregateDashboardGroup(currentGroup, currentPeriod) : Store.aggregateDashboard(currentCompany, currentPeriod));
+            const incomeExpenseOption = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: ₱{c} ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    left: 'left',
+                    textStyle: { color: '#6b7280' }
+                },
+                series: [
+                    {
+                        name: '收支分析',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        center: ['60%', '50%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: {
+                            borderRadius: 10,
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        },
+                        label: {
+                            show: false,
+                            position: 'center'
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: '18',
+                                fontWeight: 'bold'
+                            }
+                        },
+                        labelLine: {
+                            show: false
+                        },
+                        data: [
+                            { value: dash.totals.income, name: '总收入', itemStyle: { color: '#10b981' } },
+                            { value: dash.totals.expense, name: '总支出', itemStyle: { color: '#ef4444' } },
+                            { value: dash.totals.profit, name: '净利润', itemStyle: { color: '#3b82f6' } }
+                        ]
+                    }
+                ]
+            };
+            incomeExpenseChart.setOption(incomeExpenseOption);
+            
+            
+            // 响应式调整
+            window.addEventListener('resize', () => {
+                cashFlowChart.resize();
+                incomeExpenseChart.resize();
+            });
+        }
+
+        function initUserSelector() {
+            const sel = document.getElementById('userSelector');
+            const users = Store.getUsers();
+            sel.innerHTML = users.map(u => `<option value="${u.id}">${u.name}${u.role==='admin'?'(管理员)':''}</option>`).join('');
+            const u = Store.getCurrentUser();
+            if (u) sel.value = u.id;
+        }
+
+        function applyUserPermissions() {
+            const u = Store.getCurrentUser();
+            const companySelect = document.getElementById('companySelector');
+            const allCompanies = Store.getCompanies();
+            const allowedIds = remoteAllowedCompanies && remoteAllowedCompanies.length ? remoteAllowedCompanies : (u && u.role === 'company_user') ? (u.allowedCompanies || []) : allCompanies.map(c => c.id);
+            const companies = allCompanies.filter(c => allowedIds.includes(c.id));
+            const isAdmin = remoteAllowedCompanies ? (remoteAllowedCompanies.length === allCompanies.length) : (u && u.role === 'admin');
+            companySelect.innerHTML = (isAdmin ? '<option value="all">全部分公司</option>' : '') + companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            if (!isAdmin) {
+                currentCompany = companies[0]?.id || '';
+            }
+            const nameEl = document.getElementById('currentUserName');
+            if (nameEl) nameEl.textContent = supaUser ? (supaUser.email || '') : (u ? u.name : '');
+            const groupSel = document.getElementById('groupSelector');
+            if (groupSel) groupSel.disabled = !isAdmin;
+        }
+
+        function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); const url = localStorage.getItem('supabase_url') || ''; const key = localStorage.getItem('supabase_anon_key') || ''; document.getElementById('supabaseUrlInput').value = url; document.getElementById('supabaseKeyInput').value = key; }
+        function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
+        function saveBackendSettings() { const url = document.getElementById('supabaseUrlInput').value.trim(); const key = document.getElementById('supabaseKeyInput').value.trim(); localStorage.setItem('supabase_url', url); localStorage.setItem('supabase_anon_key', key); updateBackendStatus(); closeSettings(); showNotification('后端设置已保存', 'success'); }
+        function initBackend() { ensureBackendConfig().then(()=>{ updateBackendStatus(); try { Store.syncFromSupabase().then((ok)=>{ if (ok) { applyUserPermissions(); refreshDashboard(); loadRecentTransactions(); updateCashFlowChart(cashFlowMode); showNotification('已连接 Supabase，并同步数据', 'success'); } else { showNotification('Supabase 已配置，等待数据库初始化', 'info'); } }); } catch(e){} }); }
+        async function ensureBackendConfig() {
+            let url = localStorage.getItem('supabase_url');
+            let key = localStorage.getItem('supabase_anon_key');
+            if (url && key) return true;
+            const sp = new URLSearchParams(window.location.search);
+            const qpUrl = sp.get('supabase_url');
+            const qpKey = sp.get('supabase_key');
+            if (qpUrl && qpKey) { localStorage.setItem('supabase_url', qpUrl); localStorage.setItem('supabase_anon_key', qpKey); return true; }
+            const hp = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+            const hpUrl = hp.get('supabase_url');
+            const hpKey = hp.get('supabase_key');
+            if (hpUrl && hpKey) { localStorage.setItem('supabase_url', hpUrl); localStorage.setItem('supabase_anon_key', hpKey); return true; }
+            const cfgB64 = hp.get('config_b64');
+            if (cfgB64) {
+                try {
+                    const json = atob(decodeURIComponent(cfgB64));
+                    const cfg = JSON.parse(json);
+                    if (cfg.supabase_url && cfg.supabase_anon_key) {
+                        localStorage.setItem('supabase_url', cfg.supabase_url);
+                        localStorage.setItem('supabase_anon_key', cfg.supabase_anon_key);
+                        return true;
+                    }
+                } catch(e) {}
+            }
+            if (await loadConfigApi()) return true;
+            return await loadConfigJson();
+        }
+        async function loadConfigApi() { try { const res = await fetch('/api/config', { cache: 'no-store' }); if (!res.ok) return false; const cfg = await res.json(); if (cfg && cfg.supabase_url && cfg.supabase_anon_key) { localStorage.setItem('supabase_url', cfg.supabase_url); localStorage.setItem('supabase_anon_key', cfg.supabase_anon_key); showNotification('已自动加载后端配置', 'success'); return true; } return false; } catch(e) { return false; } }
+        async function loadConfigJson() { try { const res = await fetch('/config.json', { cache: 'no-store' }); if (!res.ok) return false; const cfg = await res.json(); if (cfg && cfg.supabase_url && cfg.supabase_anon_key) { localStorage.setItem('supabase_url', cfg.supabase_url); localStorage.setItem('supabase_anon_key', cfg.supabase_anon_key); showNotification('已自动加载后端配置', 'success'); return true; } return false; } catch(e) { return false; } }
+        function updateBackendStatus() { const url = localStorage.getItem('supabase_url'); const key = localStorage.getItem('supabase_anon_key'); const el = document.getElementById('backendStatus'); const enabled = !!(url && key); el.textContent = enabled ? 'Supabase 已配置' : '本地存储'; }
+
+        let supaClient = null;
+        let supaUser = null;
+        let remoteAllowedCompanies = null;
+        function getSupa() { const url = localStorage.getItem('supabase_url'); const key = localStorage.getItem('supabase_anon_key'); if (!url || !key || typeof supabase === 'undefined') return null; if (supaClient) return supaClient; try { supaClient = supabase.createClient(url, key); return supaClient; } catch(e) { return null; } }
+        async function initAuth() { const c = getSupa(); if (!c) { updateAuthUI(); return; } const { data } = await c.auth.getUser(); supaUser = data && data.user ? data.user : null; await fetchRemoteAllowed(); updateAuthUI(); applyUserPermissions(); refreshDashboard(); loadRecentTransactions(); updateCashFlowChart(cashFlowMode); }
+        function openLogin() { document.getElementById('loginModal').classList.remove('hidden'); }
+        function closeLogin() { document.getElementById('loginModal').classList.add('hidden'); }
+        async function supaLogout() { const c = getSupa(); if (!c) return; await c.auth.signOut(); supaUser = null; remoteAllowedCompanies = null; updateAuthUI(); applyUserPermissions(); refreshDashboard(); loadRecentTransactions(); updateCashFlowChart(cashFlowMode); }
+        async function fetchRemoteAllowed() { const c = getSupa(); if (!c || !supaUser) { remoteAllowedCompanies = null; return; } const { data } = await c.from('user_company_access').select('company_id').eq('user_id', supaUser.id); remoteAllowedCompanies = (data || []).map(x => x.company_id); }
+        function updateAuthUI() { const el = document.getElementById('authStatus'); const btnL = document.getElementById('btnLogin'); const btnO = document.getElementById('btnLogout'); const btnC = document.getElementById('btnCopyUID'); const btnA = document.getElementById('btnAdmin'); const btnS = document.getElementById('btnSettings'); const btnShare = document.getElementById('btnShare'); const allCompanies = Store.getCompanies(); const isAdmin = remoteAllowedCompanies && remoteAllowedCompanies.length === allCompanies.length; if (supaUser) { el.textContent = supaUser.email || '已登录'; btnL.classList.add('hidden'); btnO.classList.remove('hidden'); btnC.classList.remove('hidden'); btnA.classList.remove('hidden'); btnShare.classList.remove('hidden'); if (isAdmin) btnS.classList.remove('hidden'); else btnS.classList.add('hidden'); } else { el.textContent = '未登录'; btnL.classList.remove('hidden'); btnO.classList.add('hidden'); btnC.classList.add('hidden'); btnA.classList.add('hidden'); btnShare.classList.add('hidden'); btnS.classList.add('hidden'); } }
+
+        function openShare() { const modal = document.getElementById('shareModal'); modal.classList.remove('hidden'); const base = window.location.origin + window.location.pathname; document.getElementById('shareBaseUrl').value = base; const url = localStorage.getItem('supabase_url') || ''; const key = localStorage.getItem('supabase_anon_key') || ''; const cfg = { supabase_url: url, supabase_anon_key: key }; try { const b64 = encodeURIComponent(btoa(JSON.stringify(cfg))); const full = base + '#config_b64=' + b64; document.getElementById('shareUrlOutput').value = full; } catch(e) { document.getElementById('shareUrlOutput').value = base; } }
+        function closeShare() { document.getElementById('shareModal').classList.add('hidden'); }
+        function copyShareUrl() { const base = (document.getElementById('shareBaseUrl').value || '').trim(); const url = localStorage.getItem('supabase_url') || ''; const key = localStorage.getItem('supabase_anon_key') || ''; if (!base || !url || !key) { showNotification('请先配置后端或填写基础网址', 'error'); return; } const cfg = { supabase_url: url, supabase_anon_key: key }; const b64 = encodeURIComponent(btoa(JSON.stringify(cfg))); const full = base + '#config_b64=' + b64; navigator.clipboard.writeText(full).then(()=>{ document.getElementById('shareUrlOutput').value = full; showNotification('共享链接已复制', 'success'); }); }
+        function downloadConfigJson() { const url = localStorage.getItem('supabase_url') || ''; const key = localStorage.getItem('supabase_anon_key') || ''; if (!url || !key) { showNotification('请先配置后端再导出', 'error'); return; } const blob = new Blob([JSON.stringify({ supabase_url: url, supabase_anon_key: key }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'config.json'; document.body.appendChild(a); a.click(); URL.revokeObjectURL(a.href); a.remove(); showNotification('已下载 config.json', 'success'); }
+
+        function openAdmin() { const modal = document.getElementById('adminModal'); modal.classList.remove('hidden'); renderAdminCompanies(); }
+        function closeAdmin() { document.getElementById('adminModal').classList.add('hidden'); }
+        function renderAdminCompanies() { const container = document.getElementById('adminCompaniesContainer'); const companies = Store.getCompanies(); container.innerHTML = companies.map(c => `<label class="flex items-center space-x-2 p-2 border rounded-lg"><input type="checkbox" class="admin-company-checkbox" value="${c.id}"><span>${c.name}</span></label>`).join(''); }
+        async function adminLoadAssignments() { const c = getSupa(); const uid = document.getElementById('adminUserIdInput').value.trim(); if (!c || !uid) { showNotification('请先输入用户ID', 'error'); return; } const { data, error } = await c.from('user_company_access').select('company_id').eq('user_id', uid); if (error) { showNotification('加载授权失败', 'error'); return; } const set = new Set((data||[]).map(x=>x.company_id)); document.querySelectorAll('.admin-company-checkbox').forEach(ch => { ch.checked = set.has(ch.value); }); showNotification('已加载当前授权', 'success'); }
+        async function adminSavePermissions() { const c = getSupa(); const uid = document.getElementById('adminUserIdInput').value.trim(); if (!c || !uid) { showNotification('请先输入用户ID', 'error'); return; } const selected = Array.from(document.querySelectorAll('.admin-company-checkbox')).filter(ch=>ch.checked).map(ch=>ch.value); await c.from('user_company_access').delete().eq('user_id', uid); if (selected.length) { const rows = selected.map(cid => ({ user_id: uid, company_id: cid })); const { error } = await c.from('user_company_access').insert(rows); if (error) { showNotification('保存授权失败', 'error'); return; } } showNotification('授权已保存', 'success'); }
+        async function adminGrantAll() { const companies = Store.getCompanies().map(c=>c.id); document.querySelectorAll('.admin-company-checkbox').forEach(ch => { ch.checked = companies.includes(ch.value); }); }
+        async function adminRevokeAll() { document.querySelectorAll('.admin-company-checkbox').forEach(ch => { ch.checked = false; }); }
+        function copyUserId() { if (!supaUser) { showNotification('请先登录', 'error'); return; } try { navigator.clipboard.writeText(supaUser.id); showNotification('用户ID已复制', 'success'); } catch(e) { showNotification('复制失败', 'error'); } }
+        
+        // 数字动画
+        function animateNumbers(totals) {
+            animateValue(document.querySelector('.metric-card:nth-child(1) .number-counter'), totals.income);
+            animateValue(document.querySelector('.metric-card:nth-child(2) .number-counter'), totals.expense);
+            animateValue(document.querySelector('.metric-card:nth-child(3) .number-counter'), totals.profit);
+        }
+        
+        // 加载最近交易（按当前公司/集团与周期过滤）
+        function loadRecentTransactions() {
+            const list = currentCompany === 'all' ? getPeriodTransactions(null, currentGroup, currentPeriod, 0) : getPeriodTransactions(currentCompany, null, currentPeriod, 0);
+            const transactions = list.slice(0, 5);
+            const container = document.getElementById('recentTransactions');
+            container.innerHTML = transactions.map(transaction => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center ${transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'}">
+                            <svg class="w-4 h-4 ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                ${transaction.type === 'income' ? 
+                                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>' :
+                                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"></path>'
+                                }
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">${transaction.description || ''}</p>
+                            <p class="text-xs text-gray-500">${transaction.category || ''} • ${transaction.date}</p>
+                        </div>
+                    </div>
+                    <span class="text-sm font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
+                        ${transaction.type === 'income' ? '+' : '-'}${Utils.formatCurrency(transaction.amount || 0)}
+                    </span>
+                </div>
+            `).join('');
+        }
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 时间筛选器
+            document.getElementById('timeFilter').addEventListener('change', function(e) {
+                currentPeriod = e.target.value;
+                refreshDashboard();
+            });
+            
+            document.getElementById('groupSelector').addEventListener('change', function(e) {
+                currentGroup = e.target.value;
+                refreshDashboard();
+                loadRecentTransactions();
+            });
+            document.getElementById('companySelector').addEventListener('change', function(e) {
+                currentCompany = e.target.value;
+                refreshDashboard();
+                loadRecentTransactions();
+                updateCashFlowChart(cashFlowMode);
+            });
+            document.getElementById('userSelector').addEventListener('change', function(e) {
+                Store.login(e.target.value);
+                applyUserPermissions();
+                refreshDashboard();
+                loadRecentTransactions();
+                updateCashFlowChart(cashFlowMode);
+            });
+            
+            // 表单提交
+            document.getElementById('modalForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const amount = parseFloat(e.target.querySelector('input[type="number"]').value || '0');
+                const companySel = document.getElementById('modalCompanySelect');
+                const category = document.getElementById('modalCategorySelect').value;
+                const companyId = companySel.value;
+                const description = e.target.querySelector('textarea').value;
+                if (!companyId) { showNotification('请先选择分公司', 'error'); return; }
+                const tx = { date: Utils.formatDate(new Date()), description, category, amount, paymentMethod: 'cash', status: 'completed', type: currentModalType === 'addIncome' ? 'income' : 'expense', notes: '' };
+                const added = Store.addTransaction(companyId, tx);
+                if (!added) { showNotification('该类别不属于所选分公司', 'error'); return; }
+                refreshDashboard();
+                loadRecentTransactions();
+                closeModal();
+                showNotification('操作成功！', 'success');
+            });
+            const btnInc = document.getElementById('btnFlowIncome');
+            const btnExp = document.getElementById('btnFlowExpense');
+            btnInc.addEventListener('click', function(){
+                btnInc.className = 'px-3 py-1 text-sm bg-blue-100 text-blue-600 rounded-lg';
+                btnExp.className = 'px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded-lg';
+                updateCashFlowChart('income');
+            });
+            btnExp.addEventListener('click', function(){
+                btnExp.className = 'px-3 py-1 text-sm bg-red-100 text-red-600 rounded-lg';
+                btnInc.className = 'px-3 py-1 text-sm bg-gray-100 text-gray-600 rounded-lg';
+                updateCashFlowChart('expense');
+            });
+            document.getElementById('piePeriodSelector').addEventListener('change', function(e){
+                const map = { '本月': 'month', '本季度': 'quarter', '本年度': 'year' };
+                currentPeriod = map[e.target.value] || currentPeriod;
+                refreshDashboard();
+                updateCashFlowChart(cashFlowMode);
+            });
+            document.getElementById('loginForm').addEventListener('submit', async function(e){
+                e.preventDefault();
+                const email = document.getElementById('loginEmail').value.trim();
+                const password = document.getElementById('loginPassword').value.trim();
+                const c = getSupa();
+                if (!c) { showNotification('后端未配置', 'error'); return; }
+                let { data, error } = await c.auth.signInWithPassword({ email, password });
+                if (error) {
+                    const res = await c.auth.signUp({ email, password });
+                    if (res.error) { showNotification('登录或注册失败', 'error'); return; }
+                    supaUser = res.data.user;
+                    showNotification('已为你创建账户', 'success');
+                } else {
+                    supaUser = data.user;
+                }
+                await fetchRemoteAllowed();
+                closeLogin();
+                updateAuthUI();
+                applyUserPermissions();
+                refreshDashboard();
+                loadRecentTransactions();
+                updateCashFlowChart(cashFlowMode);
+                showNotification('登录成功', 'success');
+            });
+        }
+        
+        // 更新仪表板数据
+        function refreshDashboard() {
+            const totals = computeLiveTotals(currentCompany === 'all' ? null : currentCompany, currentCompany === 'all' ? currentGroup : null, currentPeriod);
+            animateNumbers(totals);
+            const opt = incomeExpenseChart.getOption();
+            incomeExpenseChart.setOption({ ...opt, series: [{ ...opt.series[0], data: [
+                { value: totals.income, name: '总收入', itemStyle: { color: '#10b981' } },
+                { value: totals.expense, name: '总支出', itemStyle: { color: '#ef4444' } },
+                { value: totals.profit, name: '净利润', itemStyle: { color: '#3b82f6' } }
+            ] } ] });
+        }
+
+        let cashFlowMode = 'income';
+        function updateCashFlowChart(mode) {
+            cashFlowMode = mode;
+            const seriesData = computeMonthlySeries(mode, currentCompany === 'all' ? null : currentCompany, currentCompany === 'all' ? currentGroup : null, currentPeriod);
+            const color = mode === 'income' ? '#10b981' : '#ef4444';
+            cashFlowChart.setOption({
+                series: [{
+                    name: mode === 'income' ? '收入' : '支出',
+                    type: 'line',
+                    data: seriesData,
+                    smooth: true,
+                    lineStyle: { color: color, width: 3 },
+                    itemStyle: { color: color },
+                    areaStyle: { color: mode === 'income' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)' }
+                }]
+            });
+        }
+
+        function computeMonthlySeries(mode, companyId, groupId, period) {
+            const now = new Date();
+            const months = [];
+            for (let i = 5; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth()-i, 1); months.push({ y: d.getFullYear(), m: d.getMonth()+1 }); }
+            const list = companyId ? Store.getTransactions(companyId) : Store.getTransactionsForGroup(groupId || 'group1');
+            const series = months.map(({y,m}) => list.filter(t => t.type === (mode === 'income' ? 'income' : 'expense') && String(t.date).startsWith(`${y}-${String(m).padStart(2,'0')}`)).reduce((s,t)=>s+(t.amount||0),0));
+            return series;
+        }
+
+        
+
+        function computeLiveTotals(companyId, groupId, period) {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth()+1).padStart(2,'0');
+            const inRange = (d) => {
+                const ds = d.split('-');
+                if (period === 'month') return ds[0] == year+'' && ds[1] == month;
+                if (period === 'quarter') {
+                    const m = parseInt(ds[1],10); const q = Math.floor((today.getMonth())/3)+1; const qm = [[1,2,3],[4,5,6],[7,8,9],[10,11,12]][q-1];
+                    return ds[0] == year+'' && qm.includes(m);
+                }
+                if (period === 'year') return ds[0] == year+'';
+                return true;
+            };
+            let list = [];
+            if (companyId) list = Store.getTransactions(companyId);
+            else {
+                list = Store.getTransactionsForGroup(groupId || 'group1');
+            }
+            list = list.filter(t => inRange(t.date));
+            const income = list.filter(t=>t.type==='income').reduce((s,t)=>s+(t.amount||0),0);
+            const expense = list.filter(t=>t.type==='expense').reduce((s,t)=>s+(t.amount||0),0);
+            return { income, expense, profit: income - expense };
+        }
+
+        // 获取指定期间的交易列表（公司或集团）
+        function getPeriodTransactions(companyId, groupId, period, offset) {
+            const base = new Date();
+            let year = base.getFullYear();
+            let month = base.getMonth()+1;
+            const listAll = companyId ? Store.getTransactions(companyId) : Store.getTransactionsForGroup(groupId || 'group1');
+            if (period === 'month') {
+                month += offset; if (month<=0){ year-=1; month+=12; } if (month>12){ year+=1; month-=12; }
+                const mm = String(month).padStart(2,'0');
+                return listAll.filter(t => String(t.date).startsWith(`${year}-${mm}`));
+            }
+            if (period === 'quarter') {
+                const curQ = Math.floor(base.getMonth()/3)+1; let q = curQ + offset; let y = year; if (q<=0){ y-=1; q+=4; } if (q>4){ y+=1; q-=4; }
+                const months = [[1,2,3],[4,5,6],[7,8,9],[10,11,12]][q-1].map(m=>String(m).padStart(2,'0'));
+                return listAll.filter(t => months.some(m => String(t.date).startsWith(`${y}-${m}`)));
+            }
+            if (period === 'year') {
+                const y = year + offset;
+                return listAll.filter(t => String(t.date).startsWith(`${y}-`));
+            }
+            return listAll;
+        }
+        
+        // 更新公司数据
+        function updateCompanyData(company) { currentCompany = company; refreshDashboard(); loadRecentTransactions(); }
+        
+        // 数字动画函数
+        function animateValue(element, target) {
+            const start = parseInt(element.textContent.replace(/[₱,]/g, '')) || 0;
+            const duration = 1000;
+            const increment = (target - start) / (duration / 16);
+            let current = start;
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if ((increment > 0 && current >= target) || (increment < 0 && current <= target)) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                element.textContent = `₱${Math.floor(current).toLocaleString()}`;
+            }, 16);
+        }
+        
+        // 模态框控制
+        function showModal(type) {
+            const modal = document.getElementById('modal');
+            const title = document.getElementById('modalTitle');
+            
+            const titles = {
+                addIncome: '添加收入',
+                addExpense: '记录支出'
+            };
+            
+            title.textContent = titles[type] || '添加记录';
+            currentModalType = type;
+            const companySelect = document.getElementById('modalCompanySelect');
+            const categorySelect = document.getElementById('modalCategorySelect');
+            const companies = Store.getCompanies();
+            companySelect.innerHTML = (currentCompany === 'all' ? '<option value="">请选择分公司</option>' : '') + companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            companySelect.value = currentCompany === 'all' ? '' : currentCompany;
+            const initCid = companySelect.value || companies[0]?.id || '';
+            const cats = initCid ? Store.getCompanyCategories(initCid) : [];
+            categorySelect.innerHTML = cats.map(name => `<option value="${name}">${name}</option>`).join('');
+            companySelect.addEventListener('change', function() {
+                const cid = this.value;
+                const cs = cid ? Store.getCompanyCategories(cid) : [];
+                categorySelect.innerHTML = cs.map(name => `<option value="${name}">${name}</option>`).join('');
+            });
+            modal.classList.remove('hidden');
+            
+            // 添加动画
+            anime({
+                targets: modal.querySelector('.bg-white'),
+                scale: [0.8, 1],
+                opacity: [0, 1],
+                duration: 300,
+                easing: 'easeOutBack'
+            });
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            anime({
+                targets: modal.querySelector('.bg-white'),
+                scale: [1, 0.8],
+                opacity: [1, 0],
+                duration: 200,
+                easing: 'easeInBack',
+                complete: () => {
+                    modal.classList.add('hidden');
+                }
+            });
+        }
+        
+        // 侧边栏切换
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('mobile-open');
+        }
+        
+        // 通知提示
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white font-medium ${
+                type === 'success' ? 'bg-green-500' : 
+                type === 'error' ? 'bg-red-500' : 
+                'bg-blue-500'
+            }`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            anime({
+                targets: notification,
+                translateX: [300, 0],
+                opacity: [0, 1],
+                duration: 300,
+                easing: 'easeOutBack'
+            });
+            
+            setTimeout(() => {
+                anime({
+                    targets: notification,
+                    translateX: [0, 300],
+                    opacity: [1, 0],
+                    duration: 300,
+                    easing: 'easeInBack',
+                    complete: () => {
+                        document.body.removeChild(notification);
+                    }
+                });
+            }, 3000);
+        }
+        
+        // 点击模态框外部关闭
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+        
+        // 更新公司图表
+        function updateChartsForCompany(company) { currentCompany = company; refreshDashboard(); }
+        
+        // 加载公司特定交易
+        function loadRecentTransactions() {
+            const transactions = currentCompany === 'all' ? Store.getTransactionsForGroup(currentGroup).slice(0, 5) : Store.getTransactions(currentCompany).slice(0, 5);
+            const container = document.getElementById('recentTransactions');
+            container.innerHTML = transactions.map(transaction => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center ${transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'}">
+                            <svg class="w-4 h-4 ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                ${transaction.type === 'income' ? 
+                                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>' :
+                                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"></path>'
+                                }
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">${transaction.description}</p>
+                            <p class="text-xs text-gray-500">${transaction.category} • ${transaction.date}${transaction.companyName ? ' • ' + transaction.companyName : ''}</p>
+                        </div>
+                    </div>
+                    <span class="text-sm font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
+                        ${transaction.type === 'income' ? '+' : '-'}${Utils.formatCurrency(transaction.amount)}
+                    </span>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

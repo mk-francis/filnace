@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交易记录 - 财务管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/store.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #1e3a8a;
+            --secondary-gray: #475569;
+            --accent-gold: #f59e0b;
+            --bg-light: #f8fafc;
+            --success-green: #10b981;
+            --warning-red: #ef4444;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .title-font {
+            font-family: 'Noto Serif SC', serif;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+        
+        .sidebar-item {
+            transition: all 0.3s ease;
+            border-radius: 12px;
+            margin: 4px 0;
+        }
+        
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(8px);
+        }
+        
+        .sidebar-item.active {
+            background: rgba(245, 158, 11, 0.3);
+            border-left: 4px solid var(--accent-gold);
+        }
+        
+        .transaction-row {
+            transition: all 0.3s ease;
+        }
+        
+        .transaction-row:hover {
+            background: rgba(59, 130, 246, 0.05);
+            transform: translateX(4px);
+        }
+        
+        .filter-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn.active {
+            background: var(--accent-gold);
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .search-input {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+        }
+        
+        .category-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .category-income { background: #dcfce7; color: #166534; }
+        .category-expense { background: #fee2e2; color: #991b1b; }
+        .category-repair { background: #e0f2fe; color: #075985; }
+        .category-customization { background: #ede9fe; color: #5b21b6; }
+        .category-aircon { background: #e6fffa; color: #0f766e; }
+        .category-parts { background: #fff7ed; color: #9a3412; }
+        .category-maintenance { background: #f1f5f9; color: #0f172a; }
+        
+        .floating-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .content-layer {
+            position: relative;
+            z-index: 10;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 浮动粒子背景 -->
+    <div class="floating-particles" id="particles-container"></div>
+    
+    <!-- 主要内容 -->
+    <div class="content-layer">
+        <!-- 移动端菜单按钮 -->
+        <button class="md:hidden fixed top-4 left-4 z-50 bg-white/20 backdrop-blur-sm p-3 rounded-lg" onclick="toggleSidebar()">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+        
+        <!-- 侧边导航栏 -->
+        <div class="sidebar fixed left-0 top-0 w-64 h-full bg-white/10 backdrop-blur-lg border-r border-white/20 z-40" id="sidebar">
+            <div class="p-6">
+                <div class="flex items-center space-x-3 mb-8">
+                    <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-white font-bold text-lg title-font">财务管理系统</h1>
+                        <p class="text-white/70 text-sm">智能财务分析平台</p>
+                    </div>
+                </div>
+                
+                <nav class="space-y-2">
+                    <a href="index.html" class="sidebar-item flex items-center space-x-3 px-4 py-3 text-white/80 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v0a2 2 0 01-2 2H10a2 2 0 01-2-2v0z"></path>
+                        </svg>
+                        <span>仪表板</span>
+                    </a>
+                    
+                    <a href="transactions.html" class="sidebar-item active flex items-center space-x-3 px-4 py-3 text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <span>交易记录</span>
+                    </a>
+                    
+                    
+                    <a href="reports.html" class="sidebar-item flex items-center space-x-3 px-4 py-3 text-white/80 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span>财务报表</span>
+                    </a>
+                </nav>
+            </div>
+            
+            <!-- 用户信息 -->
+            <div class="absolute bottom-6 left-6 right-6">
+                <div class="glass-effect rounded-xl p-4">
+                    <div class="flex items-center space-x-3">
+                        <img src="resources/images/user-avatar.jpg" alt="用户头像" class="w-10 h-10 rounded-full object-cover">
+                        <div>
+                            <p class="text-white font-medium text-sm">张经理</p>
+                            <p class="text-white/70 text-xs">财务总监</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主内容区域 -->
+        <div class="ml-0 md:ml-64 min-h-screen">
+            <!-- 顶部导航 -->
+            <header class="bg-white/10 backdrop-blur-lg border-b border-white/20 p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white title-font">交易记录管理</h2>
+                        <p class="text-white/70 text-sm mt-1">管理和分析所有财务交易</p>
+                    </div>
+                    
+                <div class="flex items-center space-x-4">
+                        <select id="transactionsGroupSelector" class="bg-white border border-white/70 rounded-lg px-4 py-2 text-gray-900 shadow-sm">
+                            <option value="group1">OK集团</option>
+                        </select>
+                        <select id="transactionsCompanySelector" class="bg-white border border-white/70 rounded-lg px-4 py-2 text-gray-900 shadow-sm">
+                            <option value="all">全部分公司</option>
+                            <option value="company1">ABC Auto Repair Shop</option>
+                            <option value="company2">Custom Motors PH</option>
+                            <option value="company3">CoolTech Aircon Services</option>
+                        </select>
+                        <button onclick="showAddTransactionModal()" class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-2 rounded-lg font-medium hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 transform hover:scale-105">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            添加交易
+                        </button>
+                        <button onclick="showManageModal()" class="bg-white/20 border border-white/30 rounded-lg px-6 py-2 text-white backdrop-blur-sm hover:bg-white/30 transition-all duration-300">
+                            管理公司/类别
+                        </button>
+                        
+                </div>
+                </div>
+            </header>
+            
+            <!-- 主要内容 -->
+            <main class="p-6">
+                <!-- 筛选和搜索区域 -->
+                <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 mb-6 shadow-lg">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                        <!-- 搜索框 -->
+                        <div class="flex-1 max-w-md">
+                            <div class="relative">
+                                <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                                <input type="text" id="searchInput" placeholder="搜索交易描述..." class="search-input w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+                        
+                        <!-- 筛选标签：全部 / 收入 / 支出 / 分公司名称 -->
+                        <div id="chipsContainer" class="flex flex-wrap gap-2"></div>
+                        
+                        <!-- 日期选择器 -->
+                        <div class="flex items-center space-x-2">
+                            <input type="date" id="startDate" class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                            <span class="text-gray-400">至</span>
+                            <input type="date" id="endDate" class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 交易统计卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white/95 backdrop-blur-sm rounded-xl p-6 shadow-lg card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600 mb-1">本月收入</p>
+                                <p class="text-2xl font-bold text-green-600"><span id="statIncome">₱0</span></p>
+                                <p class="text-xs text-gray-500 mt-1">较上月 <span class="text-green-500">+12.5%</span></p>
+                            </div>
+                            <div class="p-3 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white/95 backdrop-blur-sm rounded-xl p-6 shadow-lg card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600 mb-1">本月支出</p>
+                                <p class="text-2xl font-bold text-red-600"><span id="statExpense">₱0</span></p>
+                                <p class="text-xs text-gray-500 mt-1">较上月 <span class="text-red-500">+8.3%</span></p>
+                            </div>
+                            <div class="p-3 bg-red-100 rounded-lg">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white/95 backdrop-blur-sm rounded-xl p-6 shadow-lg card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600 mb-1">交易笔数</p>
+                                <p class="text-2xl font-bold text-blue-600"><span id="statCount">0</span></p>
+                                <p class="text-xs text-gray-500 mt-1">本月交易总数</p>
+                            </div>
+                            <div class="p-3 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white/95 backdrop-blur-sm rounded-xl p-6 shadow-lg card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600 mb-1">平均交易额</p>
+                                <p class="text-2xl font-bold text-purple-600"><span id="statAverage">₱0</span></p>
+                                <p class="text-xs text-gray-500 mt-1">平均每笔交易金额</p>
+                            </div>
+                            <div class="p-3 bg-purple-100 rounded-lg">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 交易列表 -->
+                <div class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden">
+                    <div class="p-6 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-900">交易记录</h3>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="exportTransactions()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                                    <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    导出
+                                </button>
+                                <select id="sortSelect" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700">
+                                    <option value="date-desc">日期降序</option>
+                                    <option value="date-asc">日期升序</option>
+                                    <option value="amount-desc">金额降序</option>
+                                    <option value="amount-asc">金额升序</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">交易时间</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类别</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">金额</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">支付方式</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsTable" class="bg-white divide-y divide-gray-200">
+                                <!-- 动态加载交易数据 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 分页 -->
+                    <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            显示第 <span id="pageStart">1</span> - <span id="pageEnd">10</span> 条，共 <span id="totalRecords">247</span> 条记录
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="changePage(-1)" class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors" id="prevBtn">上一页</button>
+                            <span class="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm" id="currentPage">1</span>
+                            <button onclick="changePage(1)" class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors" id="nextBtn">下一页</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- 添加交易模态框 -->
+    <div id="addTransactionModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-lg">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-semibold text-gray-900">添加交易记录</h3>
+                    <button onclick="closeAddTransactionModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <form id="addTransactionForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">交易类型</label>
+                            <select name="type" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="income">收入</option>
+                                <option value="expense">支出</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">金额</label>
+                            <input type="number" name="amount" step="0.01" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="0.00">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">分公司</label>
+                        <select id="transactionCompanySelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">交易描述</label>
+                        <input type="text" name="description" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="请输入交易描述">
+                    </div>
+                    <div>
+                        <label id="counterpartyLabel" class="block text-sm font-medium text-gray-700 mb-2">往来方</label>
+                        <input type="text" name="counterparty" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="例如：客户或供应商名称">
+                    </div>
+                    <div>
+                        <label id="handlerLabel" class="block text-sm font-medium text-gray-700 mb-2">经办人</label>
+                        <input type="text" name="handler" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="例如：支付人或收款人">
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">类别</label>
+                            <select name="category" id="transactionCategorySelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">支付方式</label>
+                            <select name="paymentMethod" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="bank">银行转账</option>
+                                <option value="cash">现金</option>
+                                <option value="card">信用卡</option>
+                                <option value="alipay">支付宝</option>
+                                <option value="wechat">微信支付</option>
+                                <option value="gcash">GCash</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">是否到账</label>
+                            <select name="cleared" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="no">未到账</option>
+                                <option value="yes">已到账</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">交易日期</label>
+                        <input type="date" name="date" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">备注</label>
+                        <textarea name="notes" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="请输入备注信息"></textarea>
+                    </div>
+                    
+                    <div class="flex space-x-3 pt-4">
+                        <button type="button" onclick="closeAddTransactionModal()" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">取消</button>
+                        <button type="submit" class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">添加交易</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div id="manageModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-3xl">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-semibold text-gray-900">管理公司与类别</h3>
+                    <button onclick="closeManageModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="flex space-x-3 mb-4">
+                    <button id="tabCompanies" class="px-4 py-2 rounded-lg border border-gray-300 text-sm" onclick="switchManageTab('companies')">公司</button>
+                    <button id="tabCategories" class="px-4 py-2 rounded-lg border border-gray-300 text-sm" onclick="switchManageTab('categories')">类别</button>
+                </div>
+                <div id="manageCompanies" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">公司名称</label>
+                            <input id="mCompanyName" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">业务类型</label>
+                            <input id="mBusinessType" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="可自由填写，如 修车/改装/空调"> 
+                        </div>
+                        <div class="flex items-end">
+                            <button id="mCompanySubmit" onclick="submitAddCompany()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg">添加公司</button>
+                        </div>
+                    </div>
+                    <div id="companiesList" class="divide-y"></div>
+                </div>
+                <div id="manageCategories" class="space-y-4 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">选择公司</label>
+                            <select id="mCategoryCompany" class="w-full px-4 py-2 border border-gray-300 rounded-lg"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">新类别</label>
+                            <input id="mNewCategory" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="例如：工资">
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="submitAddCategory()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg">添加类别</button>
+                        </div>
+                    </div>
+                    <div id="categoriesList" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let allTransactions = [];
+        let filteredTransactions = [];
+        let currentGroup = 'group1';
+        let currentCompany = 'company1';
+        let editingId = null;
+        let activeTypeFilter = 'all';
+        function setDefaultCategory() {
+            const companies = Store.getCompanies();
+            const found = companies.find(c => c.id === currentCompany);
+            const mappingCN = { repair: '修车', customization: '改装', aircon: '空调' };
+            const defName = mappingCN[found?.businessType] || '修车';
+            const sel = document.getElementById('transactionCategorySelect');
+            if (sel) sel.value = defName;
+        }
+        
+        // 初始化
+document.addEventListener('DOMContentLoaded', function() {
+            Store.initSeed();
+            initParticles();
+            currentGroup = document.getElementById('transactionsGroupSelector').value || 'group1';
+            currentCompany = document.getElementById('transactionsCompanySelector').value || 'company1';
+            loadTransactions();
+            setupEventListeners();
+            setDefaultDate();
+            const companySel = document.getElementById('transactionCompanySelect');
+            const categorySel = document.getElementById('transactionCategorySelect');
+            const companies = Store.getCompanies();
+            companySel.innerHTML = (currentCompany === 'all' ? '<option value="">请选择分公司</option>' : '') + companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            companySel.value = currentCompany === 'all' ? '' : currentCompany;
+            const initCid = companySel.value || companies[0]?.id || '';
+            const cats = initCid ? Store.getCompanyCategories(initCid) : [];
+            categorySel.innerHTML = cats.map(name => `<option value="${name}">${name}</option>`).join('');
+            companySel.addEventListener('change', function() {
+                const cid = this.value;
+                const cs = cid ? Store.getCompanyCategories(cid) : [];
+                categorySel.innerHTML = cs.map(name => `<option value="${name}">${name}</option>`).join('');
+            });
+            renderChips();
+        });
+        
+        // 初始化粒子背景
+        function initParticles() {
+            const app = new PIXI.Application({
+                width: window.innerWidth,
+                height: window.innerHeight,
+                backgroundColor: 0x000000,
+                backgroundAlpha: 0,
+                antialias: true
+            });
+            
+            document.getElementById('particles-container').appendChild(app.view);
+            
+            // 创建粒子容器
+            const particleContainer = new PIXI.Container();
+            app.stage.addChild(particleContainer);
+            
+            // 创建粒子
+            const particles = [];
+            for (let i = 0; i < 30; i++) {
+                const particle = new PIXI.Graphics();
+                particle.beginFill(0xffffff, 0.1);
+                particle.drawCircle(0, 0, Math.random() * 2 + 1);
+                particle.endFill();
+                
+                particle.x = Math.random() * app.screen.width;
+                particle.y = Math.random() * app.screen.height;
+                particle.vx = (Math.random() - 0.5) * 0.3;
+                particle.vy = (Math.random() - 0.5) * 0.3;
+                
+                particles.push(particle);
+                particleContainer.addChild(particle);
+            }
+            
+            // 动画循环
+            app.ticker.add(() => {
+                particles.forEach(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    
+                    if (particle.x < 0) particle.x = app.screen.width;
+                    if (particle.x > app.screen.width) particle.x = 0;
+                    if (particle.y < 0) particle.y = app.screen.height;
+                    if (particle.y > app.screen.height) particle.y = 0;
+                });
+            });
+            
+            // 响应式调整
+            window.addEventListener('resize', () => {
+                app.renderer.resize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        // 加载交易数据
+        function loadTransactions() {
+            allTransactions = currentCompany === 'all' ? Store.getTransactionsForGroup(currentGroup) : Store.getTransactions(currentCompany);
+            filteredTransactions = [...allTransactions];
+            renderTransactions();
+            updatePagination();
+            updateStats();
+        }
+        
+        // 渲染交易列表
+        function renderTransactions() {
+            const tbody = document.getElementById('transactionsTable');
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageTransactions = filteredTransactions.slice(startIndex, endIndex);
+            
+            tbody.innerHTML = pageTransactions.map(transaction => `
+                <tr class="transaction-row">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">${transaction.date}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-medium text-gray-900">${transaction.description}</div>
+                        ${transaction.companyName ? `<div class="text-xs text-gray-500">${transaction.companyName}</div>` : ''}
+                        ${transaction.counterparty ? `<div class="text-xs text-gray-500">${transaction.type === 'income' ? '客户' : '付款对象'}：${transaction.counterparty}</div>` : ''}
+                        ${transaction.notes ? `<div class="text-xs text-gray-500">${transaction.notes}</div>` : ''}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="category-tag category-${mapCategoryNameToKey(transaction.category) || transaction.category}">
+                            ${getCategoryName(transaction.category)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="text-sm font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
+                            ${transaction.type === 'income' ? '+' : '-'}${Utils.formatCurrency(transaction.amount)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="text-sm text-gray-900">${getPaymentMethodName(transaction.paymentMethod)}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            transaction.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                            transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                            'bg-red-100 text-red-800'
+                        }">
+                            ${getStatusName(transaction.status)}
+                        </span>
+                        ${typeof transaction.cleared !== 'undefined' ? `<span class=\"ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${transaction.cleared ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}\">${transaction.cleared ? '已到账' : '未到账'}</span>` : ''}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button onclick="editTransaction(${transaction.id})" class="text-blue-600 hover:text-blue-900 mr-3">编辑</button>
+                        <button onclick="deleteTransaction(${transaction.id})" class="text-red-600 hover:text-red-900">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            // 添加动画
+            anime({
+                targets: '.transaction-row',
+                translateX: [-20, 0],
+                opacity: [0, 1],
+                duration: 500,
+                delay: anime.stagger(50),
+                easing: 'easeOutQuart'
+            });
+        }
+        
+        // 获取类别名称
+        function getCategoryName(category) {
+            const categoryNames = {
+                income: '收入',
+                expense: '支出',
+                repair: '修车',
+                customization: '改装',
+                aircon: '空调',
+                parts: '零件',
+                maintenance: '维保',
+                other: '其他'
+            };
+            return categoryNames[category] || category;
+        }
+        
+        // 获取支付方式名称
+        function getPaymentMethodName(method) {
+            const methodNames = {
+                bank: '银行转账',
+                cash: '现金',
+                card: '信用卡',
+                alipay: '支付宝',
+                wechat: '微信支付',
+                gcash: 'GCash'
+            };
+            return methodNames[method] || method;
+        }
+        
+        // 获取状态名称
+        function getStatusName(status) {
+            const statusNames = {
+                completed: '已完成',
+                pending: '待处理',
+                cancelled: '已取消'
+            };
+            return statusNames[status] || status;
+        }
+        
+        // 更新分页
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage + 1;
+            const endIndex = Math.min(currentPage * itemsPerPage, filteredTransactions.length);
+            
+            document.getElementById('pageStart').textContent = startIndex;
+            document.getElementById('pageEnd').textContent = endIndex;
+            document.getElementById('totalRecords').textContent = filteredTransactions.length;
+            document.getElementById('currentPage').textContent = currentPage;
+            
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage === totalPages;
+        }
+        
+        // 切换页面
+        function changePage(direction) {
+            const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+            
+            if (direction === -1 && currentPage > 1) {
+                currentPage--;
+            } else if (direction === 1 && currentPage < totalPages) {
+                currentPage++;
+            }
+            
+            renderTransactions();
+            updatePagination();
+        }
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 搜索功能
+            document.getElementById('searchInput').addEventListener('input', function(e) {
+                filterTransactions();
+            });
+            
+            // 筛选按钮事件在渲染标签时绑定
+            
+            // 日期筛选
+            document.getElementById('startDate').addEventListener('change', filterTransactions);
+            document.getElementById('endDate').addEventListener('change', filterTransactions);
+            
+            // 排序
+            document.getElementById('sortSelect').addEventListener('change', function() {
+                sortTransactions(this.value);
+            });
+            
+            // 表单提交
+            document.getElementById('addTransactionForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addTransaction();
+            });
+            document.getElementById('transactionsGroupSelector').addEventListener('change', function(e) {
+                currentGroup = e.target.value;
+                loadTransactions();
+                setDefaultCategory();
+                renderChips();
+            });
+            document.getElementById('transactionsCompanySelector').addEventListener('change', function(e) {
+                currentCompany = e.target.value;
+                loadTransactions();
+                setDefaultCategory();
+                renderChips();
+            });
+        }
+        
+        // 筛选交易
+        function filterTransactions() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            filteredTransactions = allTransactions.filter(transaction => {
+                const matchesSearch = transaction.description.toLowerCase().includes(searchTerm) || 
+                                    String(transaction.notes || '').toLowerCase().includes(searchTerm);
+                const matchesType = activeTypeFilter === 'all' || transaction.type === activeTypeFilter;
+                const matchesDateRange = (!startDate || transaction.date >= startDate) && 
+                                       (!endDate || transaction.date <= endDate);
+                
+                return matchesSearch && matchesType && matchesDateRange;
+            });
+            
+            currentPage = 1;
+            renderTransactions();
+            updatePagination();
+            updateStats();
+        }
+        
+        // 排序交易
+        function sortTransactions(sortType) {
+            const [field, order] = sortType.split('-');
+            
+            filteredTransactions.sort((a, b) => {
+                let aVal = a[field];
+                let bVal = b[field];
+                
+                if (field === 'date') {
+                    aVal = new Date(aVal);
+                    bVal = new Date(bVal);
+                }
+                
+                if (order === 'asc') {
+                    return aVal > bVal ? 1 : -1;
+                } else {
+                    return aVal < bVal ? 1 : -1;
+                }
+            });
+            
+            renderTransactions();
+            updateStats();
+        }
+        
+        // 设置默认日期
+        function setDefaultDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.querySelector('input[name="date"]').value = today;
+        }
+        
+        // 显示添加交易模态框
+        function showAddTransactionModal() {
+            const modal = document.getElementById('addTransactionModal');
+            modal.classList.remove('hidden');
+            rebuildCategoryOptions();
+            
+            anime({
+                targets: modal.querySelector('.bg-white'),
+                scale: [0.8, 1],
+                opacity: [0, 1],
+                duration: 300,
+                easing: 'easeOutBack'
+            });
+        }
+        
+        // 关闭添加交易模态框
+        function closeAddTransactionModal() {
+            const modal = document.getElementById('addTransactionModal');
+            anime({
+                targets: modal.querySelector('.bg-white'),
+                scale: [1, 0.8],
+                opacity: [1, 0],
+                duration: 200,
+                easing: 'easeInBack',
+                complete: () => {
+                    modal.classList.add('hidden');
+                    document.getElementById('addTransactionForm').reset();
+                    setDefaultDate();
+                }
+            });
+        }
+        
+        // 添加交易
+        function addTransaction() {
+            const form = document.getElementById('addTransactionForm');
+            const formData = new FormData(form);
+            const companyIdSel = document.getElementById('transactionCompanySelect');
+            const companyId = companyIdSel.value;
+            const payload = {
+                date: formData.get('date'),
+                description: formData.get('description'),
+                category: formData.get('category'),
+                amount: parseFloat(formData.get('amount')),
+                paymentMethod: formData.get('paymentMethod'),
+                status: 'completed',
+                type: formData.get('type')
+            };
+            if (!companyId) { showNotification('请先选择分公司', 'error'); return; }
+            if (editingId) {
+                const existing = allTransactions.find(t => t.id === editingId);
+                const targetCompany = existing && existing.companyId ? existing.companyId : currentCompany;
+                Store.updateTransaction(targetCompany, editingId, payload);
+                editingId = null;
+            } else {
+                const added = Store.addTransaction(companyId, payload);
+                if (!added) { showNotification('该类别不属于所选分公司', 'error'); return; }
+            }
+            allTransactions = currentCompany === 'all' ? Store.getTransactionsForGroup(currentGroup) : Store.getTransactions(currentCompany);
+            filterTransactions();
+            closeAddTransactionModal();
+            showNotification('交易记录保存成功！', 'success');
+        }
+        
+        // 编辑交易
+        function editTransaction(id) {
+            const tx = allTransactions.find(t => t.id === id);
+            if (!tx) return;
+            editingId = id;
+            showAddTransactionModal();
+            const form = document.getElementById('addTransactionForm');
+            form.querySelector('select[name="type"]').value = tx.type;
+            form.querySelector('input[name="amount"]').value = tx.amount;
+            form.querySelector('input[name="description"]').value = tx.description;
+            
+            document.getElementById('transactionCompanySelect').value = tx.companyId || currentCompany;
+            rebuildCategoryOptions();
+            form.querySelector('select[name="category"]').value = mapCategoryKeyToName(tx.category) || tx.category;
+            form.querySelector('select[name="paymentMethod"]').value = tx.paymentMethod;
+            form.querySelector('input[name="date"]').value = tx.date;
+            form.querySelector('textarea[name="notes"]').value = tx.notes || '';
+            updateCounterpartyLabel();
+        }
+        
+        // 删除交易
+        function deleteTransaction(id) {
+            if (confirm('确定要删除这条交易记录吗？')) {
+                if (currentCompany === 'all') {
+                    const tx = allTransactions.find(t => t.id === id);
+                    if (!tx || !tx.companyId) { showNotification('删除失败：未找到对应分公司', 'error'); return; }
+                    Store.removeTransaction(tx.companyId, id);
+                    allTransactions = Store.getTransactionsForGroup(currentGroup);
+                } else {
+                    Store.removeTransaction(currentCompany, id);
+                    allTransactions = Store.getTransactions(currentCompany);
+                }
+                filterTransactions();
+                showNotification('交易记录已删除！', 'success');
+            }
+        }
+        
+        // 导出交易
+        function exportTransactions() {
+            const data = currentCompany === 'all' ? Store.getTransactionsForGroup(currentGroup) : Store.getTransactions(currentCompany);
+            Utils.downloadJSON(`transactions_${currentCompany}.json`, data);
+            showNotification('导出成功！', 'success');
+        }
+
+        function updateStats() {
+            const income = filteredTransactions.filter(t => t.type === 'income').reduce((s, t) => s + (t.amount || 0), 0);
+            const expense = filteredTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + (t.amount || 0), 0);
+            const count = filteredTransactions.length;
+            const total = filteredTransactions.reduce((s, t) => s + (t.amount || 0), 0);
+            const avg = count ? total / count : 0;
+            const elIncome = document.getElementById('statIncome');
+            const elExpense = document.getElementById('statExpense');
+            const elCount = document.getElementById('statCount');
+            const elAvg = document.getElementById('statAverage');
+            if (elIncome) elIncome.textContent = Utils.formatCurrency(income);
+            if (elExpense) elExpense.textContent = Utils.formatCurrency(expense);
+            if (elCount) elCount.textContent = count.toLocaleString();
+            if (elAvg) elAvg.textContent = Utils.formatCurrency(avg);
+        }
+        
+        // 侧边栏切换
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('mobile-open');
+        }
+        
+        // 通知提示
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white font-medium ${
+                type === 'success' ? 'bg-green-500' : 
+                type === 'error' ? 'bg-red-500' : 
+                'bg-blue-500'
+            }`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            anime({
+                targets: notification,
+                translateX: [300, 0],
+                opacity: [0, 1],
+                duration: 300,
+                easing: 'easeOutBack'
+            });
+            
+            setTimeout(() => {
+                anime({
+                    targets: notification,
+                    translateX: [0, 300],
+                    opacity: [1, 0],
+                    duration: 300,
+                    easing: 'easeInBack',
+                    complete: () => {
+                        document.body.removeChild(notification);
+                    }
+                });
+            }, 3000);
+        }
+        
+        function lsLoad() {
+            try { return JSON.parse(localStorage.getItem('okc_finance')) || {}; } catch(e) { return {}; }
+        }
+        function lsSave(s) { localStorage.setItem('okc_finance', JSON.stringify(s)); }
+        function storeAddCompany(company) {
+            if (typeof Store.addCompany === 'function') return Store.addCompany(company);
+            const state = lsLoad();
+            state.companies = state.companies || [];
+            state.transactions = state.transactions || {};
+            state.budgets = state.budgets || {};
+            state.dashboard = state.dashboard || {};
+            const nums = state.companies.map(c => parseInt((c.id||'').replace('company',''))).filter(n => !isNaN(n));
+            const next = (nums.length ? Math.max(...nums) : 0) + 1;
+            const id = `company${next}`;
+            const item = { id, name: company.name || `新公司${next}`, businessType: company.businessType || 'repair' };
+            state.companies.push(item);
+            state.transactions[id] = [];
+            state.budgets[id] = [];
+            state.dashboard[id] = { timeseries: { income: [0,0,0,0,0,0], expense: [0,0,0,0,0,0] }, totals: { month: { income: 0, expense: 0, profit: 0 }, quarter: { income: 0, expense: 0, profit: 0 }, year: { income: 0, expense: 0, profit: 0 } } };
+            state.groups = state.groups || [{ id: 'group1', name: 'OK集团', companies: [] }];
+            const g = state.groups.find(x=>x.id==='group1') || state.groups[0];
+            if (!g.companies.includes(id)) g.companies.push(id);
+            state.categoriesByCompany = state.categoriesByCompany || {};
+            const preset = { repair: ['修车','零件','维保','空调','工资','其他'], customization: ['改装','零件','维保','工资','其他'], aircon: ['空调','设备','维保','工资','其他'] };
+            state.categoriesByCompany[id] = preset[item.businessType] ? preset[item.businessType].slice() : ['其他'];
+            lsSave(state);
+            return item;
+        }
+        function storeUpdateCompany(id, patch) {
+            if (typeof Store.updateCompany === 'function') return Store.updateCompany(id, patch);
+            const state = lsLoad();
+            const idx = (state.companies||[]).findIndex(c=>c.id===id);
+            if (idx===-1) return false;
+            state.companies[idx] = { ...state.companies[idx], ...patch };
+            lsSave(state);
+            return true;
+        }
+        function storeRemoveCompany(id) {
+            if (typeof Store.removeCompany === 'function') return Store.removeCompany(id);
+            const state = lsLoad();
+            state.companies = (state.companies||[]).filter(c=>c.id!==id);
+            (state.groups||[]).forEach(g=>{ g.companies = (g.companies||[]).filter(cid=>cid!==id); });
+            if (state.transactions) delete state.transactions[id];
+            if (state.budgets) delete state.budgets[id];
+            if (state.dashboard) delete state.dashboard[id];
+            if (state.categoriesByCompany) delete state.categoriesByCompany[id];
+            lsSave(state);
+        }
+        function storeAddCategory(companyId, name) {
+            if (typeof Store.addCompanyCategory === 'function') return Store.addCompanyCategory(companyId, name);
+            const state = lsLoad();
+            state.categoriesByCompany = state.categoriesByCompany || {};
+            const list = state.categoriesByCompany[companyId] || (state.categoriesByCompany[companyId] = []);
+            if (!list.includes(name)) list.push(name);
+            lsSave(state);
+            return list.slice();
+        }
+        function storeRemoveCategory(companyId, name) {
+            if (typeof Store.removeCompanyCategory === 'function') return Store.removeCompanyCategory(companyId, name);
+            const state = lsLoad();
+            state.categoriesByCompany = state.categoriesByCompany || {};
+            state.categoriesByCompany[companyId] = (state.categoriesByCompany[companyId]||[]).filter(x=>x!==name);
+            lsSave(state);
+            return (state.categoriesByCompany[companyId]||[]).slice();
+        }
+        function showManageModal() {
+            const modal = document.getElementById('manageModal');
+            modal.classList.remove('hidden');
+            switchManageTab('companies');
+            renderManageCompanies();
+            renderManageCategoriesInit();
+            anime({ targets: modal.querySelector('.bg-white'), scale: [0.95,1], opacity: [0,1], duration: 300, easing: 'easeOutBack' });
+        }
+        function closeManageModal() {
+            const modal = document.getElementById('manageModal');
+            anime({ targets: modal.querySelector('.bg-white'), scale: [1,0.95], opacity: [1,0], duration: 200, easing: 'easeInBack', complete: () => { modal.classList.add('hidden'); } });
+        }
+        function switchManageTab(tab) {
+            document.getElementById('manageCompanies').classList.toggle('hidden', tab !== 'companies');
+            document.getElementById('manageCategories').classList.toggle('hidden', tab !== 'categories');
+            document.getElementById('tabCompanies').classList.toggle('bg-blue-600', tab === 'companies');
+            document.getElementById('tabCompanies').classList.toggle('text-white', tab === 'companies');
+            document.getElementById('tabCategories').classList.toggle('bg-blue-600', tab === 'categories');
+            document.getElementById('tabCategories').classList.toggle('text-white', tab === 'categories');
+        }
+        function renderManageCompanies() {
+            const list = Store.getCompanies();
+            const el = document.getElementById('companiesList');
+            el.innerHTML = list.map(c => `
+                <div class=\"py-3 flex items-center justify-between\">
+                    <div>
+                        <div class=\"text-sm font-medium text-gray-900\">${c.name}</div>
+                        <div class=\"text-xs text-gray-500\">${c.id} • ${c.businessType}</div>
+                    </div>
+                    <div class=\"space-x-2\">
+                        <button class=\"px-3 py-1 text-sm border rounded\" onclick=\"startEditCompany('${c.id}')\">编辑</button>
+                        <button class=\"px-3 py-1 text-sm border rounded text-red-600\" onclick=\"deleteCompanyManage('${c.id}')\">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        function submitAddCompany() {
+            const name = document.getElementById('mCompanyName').value.trim();
+            const bt = document.getElementById('mBusinessType').value;
+            const created = storeAddCompany({ name, businessType: bt });
+            document.getElementById('mCompanyName').value = '';
+            renderManageCompanies();
+            refreshCompanyUI();
+            renderManageCategoriesInit();
+            showNotification('公司已添加', 'success');
+        }
+        function startEditCompany(id) {
+            const list = Store.getCompanies();
+            const found = list.find(x => x.id === id);
+            if (!found) return;
+            document.getElementById('mCompanyName').value = found.name;
+            document.getElementById('mBusinessType').value = found.businessType;
+            document.getElementById('mCompanyName').dataset.editing = id;
+            document.getElementById('mBusinessType').dataset.editing = id;
+            const btn = document.getElementById('mCompanySubmit');
+            btn.textContent = '保存更改';
+            btn.onclick = submitUpdateCompany;
+        }
+        function submitUpdateCompany() {
+            const id = document.getElementById('mCompanyName').dataset.editing;
+            const name = document.getElementById('mCompanyName').value.trim();
+            const bt = document.getElementById('mBusinessType').value;
+            storeUpdateCompany(id, { name, businessType: bt });
+            document.getElementById('mCompanyName').value = '';
+            delete document.getElementById('mCompanyName').dataset.editing;
+            delete document.getElementById('mBusinessType').dataset.editing;
+            const btn = document.getElementById('mCompanySubmit');
+            btn.textContent = '添加公司';
+            btn.onclick = submitAddCompany;
+            renderManageCompanies();
+            refreshCompanyUI();
+            showNotification('公司已更新', 'success');
+        }
+        function deleteCompanyManage(id) {
+            if (!confirm('确定删除该公司及其数据？')) return;
+            storeRemoveCompany(id);
+            if (currentCompany === id) { currentCompany = 'all'; }
+            renderManageCompanies();
+            refreshCompanyUI();
+            showNotification('公司已删除', 'success');
+        }
+        function renderManageCategoriesInit() {
+            const sel = document.getElementById('mCategoryCompany');
+            const companies = Store.getCompanies();
+            sel.innerHTML = companies.map(c => `<option value=\"${c.id}\">${c.name}</option>`).join('');
+            sel.onchange = renderManageCategories;
+            renderManageCategories();
+        }
+        function renderManageCategories() {
+            const cid = document.getElementById('mCategoryCompany').value;
+            const cats = cid ? Store.getCompanyCategories(cid) : [];
+            const wrap = document.getElementById('categoriesList');
+            wrap.innerHTML = cats.map(name => `<span class=\"px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm\">${name} <button class=\"ml-2 text-red-600\" onclick=\"removeCategoryManage('${cid}','${name}')\">×</button></span>`).join('');
+        }
+        function submitAddCategory() {
+            const cid = document.getElementById('mCategoryCompany').value;
+            const name = document.getElementById('mNewCategory').value.trim();
+            if (!cid || !name) { showNotification('请输入类别名称', 'error'); return; }
+            storeAddCategory(cid, name);
+            document.getElementById('mNewCategory').value = '';
+            renderManageCategories();
+            refreshCompanyUI();
+            showNotification('类别已添加', 'success');
+        }
+        function removeCategoryManage(cid, name) {
+            storeRemoveCategory(cid, name);
+            renderManageCategories();
+            refreshCompanyUI();
+            showNotification('类别已删除', 'success');
+        }
+        function refreshCompanyUI() {
+            const companies = Store.getCompanies();
+            const companySel = document.getElementById('transactionsCompanySelector');
+            const modalCompanySel = document.getElementById('transactionCompanySelect');
+            companySel.innerHTML = '<option value=\"all\">全部分公司</option>' + companies.map(c => `<option value=\"${c.id}\">${c.name}</option>`).join('');
+            if (!companies.find(c => c.id === currentCompany)) currentCompany = 'all';
+            companySel.value = currentCompany;
+            const initCid = currentCompany === 'all' ? companies[0]?.id : currentCompany;
+            const cats = initCid ? Store.getCompanyCategories(initCid) : [];
+            if (modalCompanySel) {
+                modalCompanySel.innerHTML = (currentCompany === 'all' ? '<option value=\"\">请选择分公司</option>' : '') + companies.map(c => `<option value=\"${c.id}\">${c.name}</option>`).join('');
+                modalCompanySel.value = currentCompany === 'all' ? '' : currentCompany;
+                const categorySel = document.getElementById('transactionCategorySelect');
+                if (categorySel) categorySel.innerHTML = cats.map(name => `<option value=\"${name}\">${name}</option>`).join('');
+            }
+            renderChips();
+            loadTransactions();
+        }
+        
+        function mapCategoryKeyToName(key) {
+            const m = { repair: '修车', customization: '改装', aircon: '空调', parts: '零件', maintenance: '维保', salary: '工资', other: '其他', equipment: '设备' };
+            return m[key];
+        }
+        function mapCategoryNameToKey(name) {
+            const m = { '修车': 'repair', '改装': 'customization', '空调': 'aircon', '零件': 'parts', '维保': 'maintenance', '工资': 'salary', '其他': 'other', '设备': 'equipment' };
+            return m[name];
+        }
+        
+        function renderChips() {
+            const container = document.getElementById('chipsContainer');
+            const companies = Store.getCompanies();
+            const isAll = currentCompany === 'all';
+            let html = '';
+            html += `<button class="filter-btn ${isAll ? 'active' : ''} px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium" data-filter="all">全部</button>`;
+            html += `<button class="filter-btn ${activeTypeFilter==='income' ? 'active' : ''} px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium" data-filter="income">收入</button>`;
+            html += `<button class="filter-btn ${activeTypeFilter==='expense' ? 'active' : ''} px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium" data-filter="expense">支出</button>`;
+            companies.forEach(c => {
+                html += `<button class="filter-btn ${currentCompany===c.id ? 'active' : ''} px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium" data-filter="company-${c.id}">${c.name}</button>`;
+            });
+            container.innerHTML = html;
+            container.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const f = this.dataset.filter;
+                    container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    if (f === 'all') {
+                        currentCompany = 'all';
+                        activeTypeFilter = 'all';
+                        document.getElementById('transactionsCompanySelector').value = 'all';
+                        loadTransactions();
+                        return;
+                    }
+                    if (f === 'income' || f === 'expense') {
+                        activeTypeFilter = f;
+                        filterTransactions();
+                        return;
+                    }
+                    if (f.startsWith('company-')) {
+                        const cid = f.replace('company-','');
+                        currentCompany = cid;
+                        activeTypeFilter = 'all';
+                        document.getElementById('transactionsCompanySelector').value = cid;
+                        loadTransactions();
+                        return;
+                    }
+                });
+            });
+        }
+        
+        // 点击模态框外部关闭
+        document.getElementById('addTransactionModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAddTransactionModal();
+            }
+        });
+        function updateCounterpartyLabel() {
+            const sel = document.querySelector('#addTransactionForm select[name="type"]');
+            const lbl = document.getElementById('counterpartyLabel');
+            const hlbl = document.getElementById('handlerLabel');
+            if (sel && lbl) lbl.textContent = (sel.value === 'income') ? '客户' : '付款对象';
+            if (sel && hlbl) hlbl.textContent = (sel.value === 'income') ? '收款人' : '支付人';
+        }
+        document.addEventListener('DOMContentLoaded', function(){
+            const typeSel = document.querySelector('#addTransactionForm select[name="type"]');
+            if (typeSel) { typeSel.addEventListener('change', function(){ updateCounterpartyLabel(); rebuildCategoryOptions(); }); updateCounterpartyLabel(); }
+            const companySel = document.getElementById('transactionCompanySelect');
+            if (companySel) { companySel.addEventListener('change', rebuildCategoryOptions); }
+        });
+        const FIXED_EXPENSE_CATEGORIES = ['水电费','工资','租金','网络费','车费'];
+        function rebuildCategoryOptions() {
+            const form = document.getElementById('addTransactionForm');
+            if (!form) return;
+            const type = form.querySelector('select[name="type"]').value;
+            const cid = document.getElementById('transactionCompanySelect').value || currentCompany;
+            const list = cid ? Store.getCompanyCategories(cid) : [];
+            const finalList = type === 'income' ? list.filter(n => !FIXED_EXPENSE_CATEGORIES.includes(n)) : list;
+            const sel = document.getElementById('transactionCategorySelect');
+            if (sel) sel.innerHTML = finalList.map(name => `<option value="${name}">${name}</option>`).join('');
+        }
+        function updateCounterpartyLabel() {
+            const sel = document.querySelector('#addTransactionForm select[name="type"]');
+            const lbl = document.getElementById('counterpartyLabel');
+            if (sel && lbl) lbl.textContent = (sel.value === 'income') ? '客户' : '付款对象';
+        }
+        document.addEventListener('DOMContentLoaded', function(){
+            const typeSel = document.querySelector('#addTransactionForm select[name="type"]');
+            if (typeSel) { typeSel.addEventListener('change', updateCounterpartyLabel); updateCounterpartyLabel(); }
+        });
+        document.getElementById('manageModal').addEventListener('click', function(e) { if (e.target === this) { closeManageModal(); } });
+    </script>
+</body>
+</html>

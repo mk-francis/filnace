@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>财务报表 - 财务管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/store.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #1e3a8a;
+            --secondary-gray: #475569;
+            --accent-gold: #f59e0b;
+            --bg-light: #f8fafc;
+            --success-green: #10b981;
+            --warning-red: #ef4444;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .title-font {
+            font-family: 'Noto Serif SC', serif;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+        
+        .sidebar-item {
+            transition: all 0.3s ease;
+            border-radius: 12px;
+            margin: 4px 0;
+        }
+        
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(8px);
+        }
+        
+        .sidebar-item.active {
+            background: rgba(245, 158, 11, 0.3);
+            border-left: 4px solid var(--accent-gold);
+        }
+        
+        .report-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .report-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+        
+        .report-template {
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .report-template.selected {
+            border-color: var(--accent-gold);
+            background: rgba(245, 158, 11, 0.05);
+        }
+        
+        .floating-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .content-layer {
+            position: relative;
+            z-index: 10;
+        }
+        
+        .metric-highlight {
+            background: linear-gradient(135deg, #f59e0b, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 浮动粒子背景 -->
+    <div class="floating-particles" id="particles-container"></div>
+    
+    <!-- 主要内容 -->
+    <div class="content-layer">
+        <!-- 移动端菜单按钮 -->
+        <button class="md:hidden fixed top-4 left-4 z-50 bg-white/20 backdrop-blur-sm p-3 rounded-lg" onclick="toggleSidebar()">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+        
+        <!-- 侧边导航栏 -->
+        <div class="sidebar fixed left-0 top-0 w-64 h-full bg-white/10 backdrop-blur-lg border-r border-white/20 z-40" id="sidebar">
+            <div class="p-6">
+                <div class="flex items-center space-x-3 mb-8">
+                    <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-white font-bold text-lg title-font">财务管理系统</h1>
+                        <p class="text-white/70 text-sm">智能财务分析平台</p>
+                    </div>
+                </div>
+                
+                <nav class="space-y-2">
+                    <a href="index.html" class="sidebar-item flex items-center space-x-3 px-4 py-3 text-white/80 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v0a2 2 0 01-2 2H10a2 2 0 01-2-2v0z"></path>
+                        </svg>
+                        <span>仪表板</span>
+                    </a>
+                    
+                    <a href="transactions.html" class="sidebar-item flex items-center space-x-3 px-4 py-3 text-white/80 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <span>交易记录</span>
+                    </a>
+                    
+                    
+                    <a href="reports.html" class="sidebar-item active flex items-center space-x-3 px-4 py-3 text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span>财务报表</span>
+                    </a>
+                </nav>
+            </div>
+            
+            <!-- 用户信息 -->
+            <div class="absolute bottom-6 left-6 right-6">
+                <div class="glass-effect rounded-xl p-4">
+                    <div class="flex items-center space-x-3">
+                        <img src="resources/images/user-avatar.jpg" alt="用户头像" class="w-10 h-10 rounded-full object-cover">
+                        <div>
+                            <p class="text-white font-medium text-sm">张经理</p>
+                            <p class="text-white/70 text-xs">财务总监</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主内容区域 -->
+        <div class="ml-0 md:ml-64 min-h-screen">
+            <!-- 顶部导航 -->
+            <header class="bg-white/10 backdrop-blur-lg border-b border-white/20 p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center space-x-4 mb-2">
+                            <h2 class="text-2xl font-bold text-white title-font">财务报表</h2>
+                            <div class="flex items-center space-x-2">
+                                <select class="bg-white border border-white/70 rounded-lg px-3 py-1 text-gray-900 shadow-sm text-sm" id="reportGroupSelector">
+                                    <option value="group1">OK集团</option>
+                                </select>
+                                <select class="bg-white border border-white/70 rounded-lg px-3 py-1 text-gray-900 shadow-sm text-sm" id="reportCompanySelector">
+                                    <option value="all">全部分公司</option>
+                                    <option value="company1">ABC Auto Repair Shop</option>
+                                    <option value="company2">Custom Motors PH</option>
+                                    <option value="company3">CoolTech Aircon Services</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="text-white/70 text-sm mt-1">生成和分析各类财务报表</p>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <select class="bg-white/20 border border-white/30 rounded-lg px-4 py-2 text-white backdrop-blur-sm" id="reportPeriod">
+                            <option value="month">本月</option>
+                            <option value="quarter">本季度</option>
+                            <option value="year">本年度</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                        
+                        <button onclick="exportReport()" class="bg-gradient-to-r from-green-400 to-blue-500 text-white px-6 py-2 rounded-lg font-medium hover:from-green-500 hover:to-blue-600 transition-all duration-300 transform hover:scale-105">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            导出报表
+                        </button>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- 主要内容 -->
+            <main class="p-6">
+                <!-- 报表类型选择 -->
+                <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 mb-8 shadow-lg">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-6">选择报表类型</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="report-template selected bg-white border-2 border-yellow-400 rounded-xl p-4 cursor-pointer" data-report="profit">
+                            <div class="flex items-center space-x-3 mb-3">
+                                <div class="p-2 bg-blue-100 rounded-lg">
+                                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="font-semibold text-gray-900">利润表</h4>
+                            </div>
+                            <p class="text-sm text-gray-600">展示企业收入、成本和利润情况</p>
+                        </div>
+                        
+                        <div class="report-template bg-white border-2 border-gray-200 rounded-xl p-4 cursor-pointer" data-report="cashflow">
+                            <div class="flex items-center space-x-3 mb-3">
+                                <div class="p-2 bg-green-100 rounded-lg">
+                                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="font-semibold text-gray-900">现金流量表</h4>
+                            </div>
+                            <p class="text-sm text-gray-600">分析企业现金流入和流出情况</p>
+                        </div>
+                        
+                        <div class="report-template bg-white border-2 border-gray-200 rounded-xl p-4 cursor-pointer" data-report="balance">
+                            <div class="flex items-center space-x-3 mb-3">
+                                <div class="p-2 bg-purple-100 rounded-lg">
+                                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="font-semibold text-gray-900">资产负债表</h4>
+                            </div>
+                            <p class="text-sm text-gray-600">显示企业资产、负债和所有者权益</p>
+                        </div>
+                        
+                        <div class="report-template bg-white border-2 border-gray-200 rounded-xl p-4 cursor-pointer" data-report="custom">
+                            <div class="flex items-center space-x-3 mb-3">
+                                <div class="p-2 bg-orange-100 rounded-lg">
+                                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="font-semibold text-gray-900">自定义报表</h4>
+                            </div>
+                            <p class="text-sm text-gray-600">根据需求定制报表内容</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 报表内容区域 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- 主要报表内容 -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-lg font-semibold text-gray-900" id="reportTitle">利润表</h3>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-600">报告期间：</span>
+                                    <span class="text-sm font-medium text-gray-900" id="reportPeriodDisplay">2024年1月</span>
+                                </div>
+                            </div>
+                            
+                            <!-- 报表数据表格 -->
+                        <div id="reportContent">
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">项目</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">本月金额</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">上月金额</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">变动率</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reportTableBody" class="bg-white divide-y divide-gray-200">
+                                        <!-- 动态加载报表数据 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-8">
+                                <h4 class="text-md font-semibold text-gray-900 mb-4">固定费用细分</h4>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类别</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">金额</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="fixedExpenseBody" class="bg-white divide-y divide-gray-200"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                            
+                            <!-- 图表展示区域 -->
+                            <div class="mt-8">
+                                <h4 class="text-md font-semibold text-gray-900 mb-4">数据可视化</h4>
+                                <div id="reportChart" style="height: 300px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 侧边栏信息 -->
+                    <div class="space-y-6">
+                        <!-- 关键指标 -->
+                        <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                            <h4 class="text-md font-semibold text-gray-900 mb-4">关键指标</h4>
+                            <div class="space-y-4" id="keyMetrics">
+                                <!-- 动态加载关键指标 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 报表历史 -->
+                        <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                            <h4 class="text-md font-semibold text-gray-900 mb-4">报表历史</h4>
+                            <div class="space-y-3" id="reportHistory">
+                                <!-- 动态加载报表历史 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 报表设置 -->
+                        <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+                            <h4 class="text-md font-semibold text-gray-900 mb-4">报表设置</h4>
+                            <div class="space-y-3">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                    <span class="text-sm text-gray-700">包含图表</span>
+                                </label>
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                    <span class="text-sm text-gray-700">包含同比数据</span>
+                                </label>
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-sm text-gray-700">包含预算对比</span>
+                                </label>
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-sm text-gray-700">自动发送邮件</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <div id="detailModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-3xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 id="detailTitle" class="text-lg font-semibold text-gray-900">明细</h3>
+                    <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">日期</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">描述</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">类别</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">金额</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailBody" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let reportChart;
+        let currentReportType = 'profit';
+        let currentCompany = 'all';
+        let currentPeriod = 'month';
+        let currentGroup = 'group1';
+        
+        // 初始化
+document.addEventListener('DOMContentLoaded', function() {
+            Store.initSeed();
+            initParticles();
+            initChart();
+            currentGroup = document.getElementById('reportGroupSelector').value || 'group1';
+            currentCompany = document.getElementById('reportCompanySelector').value || 'all';
+            currentPeriod = document.getElementById('reportPeriod').value || 'month';
+            loadReportData();
+            setupEventListeners();
+            loadReportHistory();
+        });
+        
+        // 初始化粒子背景
+        function initParticles() {
+            const app = new PIXI.Application({
+                width: window.innerWidth,
+                height: window.innerHeight,
+                backgroundColor: 0x000000,
+                backgroundAlpha: 0,
+                antialias: true
+            });
+            
+            document.getElementById('particles-container').appendChild(app.view);
+            
+            // 创建粒子容器
+            const particleContainer = new PIXI.Container();
+            app.stage.addChild(particleContainer);
+            
+            // 创建粒子
+            const particles = [];
+            for (let i = 0; i < 20; i++) {
+                const particle = new PIXI.Graphics();
+                particle.beginFill(0xffffff, 0.1);
+                particle.drawCircle(0, 0, Math.random() * 2 + 1);
+                particle.endFill();
+                
+                particle.x = Math.random() * app.screen.width;
+                particle.y = Math.random() * app.screen.height;
+                particle.vx = (Math.random() - 0.5) * 0.2;
+                particle.vy = (Math.random() - 0.5) * 0.2;
+                
+                particles.push(particle);
+                particleContainer.addChild(particle);
+            }
+            
+            // 动画循环
+            app.ticker.add(() => {
+                particles.forEach(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    
+                    if (particle.x < 0) particle.x = app.screen.width;
+                    if (particle.x > app.screen.width) particle.x = 0;
+                    if (particle.y < 0) particle.y = app.screen.height;
+                    if (particle.y > app.screen.height) particle.y = 0;
+                });
+            });
+            
+            // 响应式调整
+            window.addEventListener('resize', () => {
+                app.renderer.resize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        // 初始化图表
+        function initChart() {
+            reportChart = echarts.init(document.getElementById('reportChart'));
+            
+            // 响应式调整
+            window.addEventListener('resize', () => {
+                reportChart.resize();
+            });
+        }
+        
+        // 加载报表数据
+        function loadReportData() {
+            const data = localAggregateReports(currentCompany === 'all' ? null : currentCompany, currentCompany === 'all' ? currentGroup : null, currentPeriod, currentReportType);
+            updateReportContent(data);
+            const fixed = currentCompany === 'all' ? localGetFixedExpensesGroup(document.getElementById('reportGroupSelector').value || 'group1', currentPeriod) : localGetFixedExpenses(currentCompany, currentPeriod);
+            const fbody = document.getElementById('fixedExpenseBody');
+            fbody.innerHTML = fixed.map(row => `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${row.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${Utils.formatCurrency(row.amount)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function localAggregateReports(companyId, groupId, period, type) {
+            const curr = computePeriodTotals(companyId, groupId, period, 0);
+            const prev = computePeriodTotals(companyId, groupId, period, -1);
+            const income = curr.income;
+            const expense = curr.expense;
+            const getPeriodList = (offset) => {
+                const base = new Date();
+                let year = base.getFullYear();
+                let month = base.getMonth() + 1;
+                const all = companyId ? Store.getTransactions(companyId) : Store.getTransactionsForGroup(groupId || 'group1');
+                if (period === 'month') {
+                    month += offset; if (month <= 0) { year -= 1; month += 12; } if (month > 12) { year += 1; month -= 12; }
+                    const mm = String(month).padStart(2, '0');
+                    return all.filter(t => String(t.date).startsWith(`${year}-${mm}`));
+                }
+                if (period === 'quarter') {
+                    const curQ = Math.floor(base.getMonth() / 3) + 1; let q = curQ + offset; let y = year; if (q <= 0) { y -= 1; q += 4; } if (q > 4) { y += 1; q -= 4; }
+                    const months = [[1,2,3],[4,5,6],[7,8,9],[10,11,12]][q-1].map(m => String(m).padStart(2, '0'));
+                    return all.filter(t => months.some(m => String(t.date).startsWith(`${y}-${m}`)));
+                }
+                if (period === 'year') {
+                    const y = year + offset;
+                    return all.filter(t => String(t.date).startsWith(`${y}-`));
+                }
+                return all;
+            };
+            const currList = getPeriodList(0);
+            const prevList = getPeriodList(-1);
+            const currExpenses = currList.filter(t => t.type === 'expense');
+            const prevExpenses = prevList.filter(t => t.type === 'expense');
+            const adminSet = ['水电费','工资','租金','网络费'];
+            const financeSet = ['财务费用'];
+            const sumBy = (arr, pred) => arr.filter(pred).reduce((s, t) => s + (t.amount || 0), 0);
+            const admin = sumBy(currExpenses, t => adminSet.includes(t.category));
+            const prevAdmin = sumBy(prevExpenses, t => adminSet.includes(t.category));
+            const finance = sumBy(currExpenses, t => financeSet.includes(t.category));
+            const prevFinance = sumBy(prevExpenses, t => financeSet.includes(t.category));
+            const opExpense = currExpenses.reduce((s, t) => s + (t.amount || 0), 0) - admin - finance;
+            const prevOpExpense = prevExpenses.reduce((s, t) => s + (t.amount || 0), 0) - prevAdmin - prevFinance;
+            if (type === 'profit') {
+                const revenue = income;
+                const cost = 0;
+                const gross = revenue - cost;
+                const prevRevenue = prev.income;
+                const prevCost = 0;
+                const prevGross = prevRevenue - prevCost;
+                const totalExpense = expense;
+                const prevTotalExpense = prev.expense;
+                const opProfit = revenue - totalExpense;
+                const prevOpProfit = prevRevenue - prevTotalExpense;
+                const rate = (cur, pre) => pre === 0 ? 0 : ((cur - pre) / pre) * 100;
+                return {
+                    title: '利润表', period,
+                    data: [
+                        { item: '总收入', current: revenue, previous: prevRevenue, change: rate(revenue, prevRevenue) },
+                        { item: '总支出', current: totalExpense, previous: prevTotalExpense, change: rate(totalExpense, prevTotalExpense) },
+                        { item: '净利润', current: opProfit, previous: prevOpProfit, change: rate(opProfit, prevOpProfit) }
+                    ],
+                    keyMetrics: [
+                        { name: '毛利率', value: `${((gross / (revenue || 1)) * 100).toFixed(1)}%` },
+                        { name: '净利率', value: `${((opProfit / (revenue || 1)) * 100).toFixed(1)}%` }
+                    ]
+                };
+            }
+            if (type === 'cashflow') {
+                const inflow = income; const outflow = expense; const net = inflow - outflow;
+                const prevInflow = prev.income; const prevOutflow = prev.expense; const prevNet = prevInflow - prevOutflow;
+                const rate = (cur, pre) => pre === 0 ? 0 : ((cur - pre) / pre) * 100;
+                return {
+                    title: '现金流量表', period,
+                    data: [
+                        { item: '经营活动现金流入', current: inflow, previous: prevInflow, change: rate(inflow, prevInflow) },
+                        { item: '经营活动现金流出', current: outflow, previous: prevOutflow, change: rate(outflow, prevOutflow) },
+                        { item: '经营活动净现金流', current: net, previous: prevNet, change: rate(net, prevNet) }
+                    ],
+                    keyMetrics: [ { name: '经营现金流比率', value: `${((net / (inflow || 1)) * 100).toFixed(1)}%` } ]
+                };
+            }
+            if (type === 'balance') {
+                const currentAssets = Math.round(income * 2.0);
+                const nonCurrentAssets = Math.round(income * 3.0);
+                const totalAssets = currentAssets + nonCurrentAssets;
+                const currentLiabilities = Math.round(expense * 2.0);
+                const nonCurrentLiabilities = Math.round(expense * 1.5);
+                const totalLiabilities = currentLiabilities + nonCurrentLiabilities;
+                const equity = totalAssets - totalLiabilities;
+                return {
+                    title: '资产负债表', period,
+                    data: [
+                        { item: '流动资产', current: currentAssets, previous: 0, change: 0 },
+                        { item: '非流动资产', current: nonCurrentAssets, previous: 0, change: 0 },
+                        { item: '资产总计', current: totalAssets, previous: 0, change: 0 },
+                        { item: '流动负债', current: currentLiabilities, previous: 0, change: 0 },
+                        { item: '非流动负债', current: nonCurrentLiabilities, previous: 0, change: 0 },
+                        { item: '负债合计', current: totalLiabilities, previous: 0, change: 0 },
+                        { item: '所有者权益', current: equity, previous: 0, change: 0 },
+                        { item: '负债和所有者权益总计', current: totalAssets, previous: 0, change: 0 }
+                    ],
+                    keyMetrics: [ { name: '资产负债率', value: `${((totalLiabilities / (totalAssets || 1)) * 100).toFixed(1)}%` } ]
+                };
+            }
+            return { title: '', period, data: [], keyMetrics: [] };
+        }
+
+        function computePeriodTotals(companyId, groupId, period, offset) {
+            const base = new Date();
+            let targetYear = base.getFullYear();
+            let targetMonth = base.getMonth()+1;
+            if (period === 'month') {
+                targetMonth += offset; if (targetMonth <=0) { targetYear -= 1; targetMonth += 12; } if (targetMonth>12){ targetYear +=1; targetMonth -=12; }
+                const mm = String(targetMonth).padStart(2,'0');
+                const list = companyId ? Store.getTransactions(companyId) : Store.getTransactionsForGroup(groupId || 'group1');
+                const flt = list.filter(t => String(t.date).startsWith(`${targetYear}-${mm}`));
+                const income = flt.filter(t=>t.type==='income').reduce((s,t)=>s+(t.amount||0),0);
+                const expense = flt.filter(t=>t.type==='expense').reduce((s,t)=>s+(t.amount||0),0);
+                return { income, expense };
+            }
+            if (period === 'quarter') {
+                const curQ = Math.floor(base.getMonth()/3)+1; const targetQ = curQ + offset; let y = targetYear; let q = targetQ;
+                if (q<=0) { y -= 1; q += 4; } if (q>4) { y += 1; q -= 4; }
+                const months = [[1,2,3],[4,5,6],[7,8,9],[10,11,12]][q-1].map(m=>String(m).padStart(2,'0'));
+                const list = companyId ? Store.getTransactions(companyId) : Store.getTransactionsForGroup(groupId || 'group1');
+                const flt = list.filter(t => months.some(m => String(t.date).startsWith(`${y}-${m}`)));
+                const income = flt.filter(t=>t.type==='income').reduce((s,t)=>s+(t.amount||0),0);
+                const expense = flt.filter(t=>t.type==='expense').reduce((s,t)=>s+(t.amount||0),0);
+                return { income, expense };
+            }
+            if (period === 'year') {
+                const y = targetYear + offset;
+                const list = companyId ? Store.getTransactions(companyId) : Store.getTransactionsForGroup(groupId || 'group1');
+                const flt = list.filter(t => String(t.date).startsWith(`${y}-`));
+                const income = flt.filter(t=>t.type==='income').reduce((s,t)=>s+(t.amount||0),0);
+                const expense = flt.filter(t=>t.type==='expense').reduce((s,t)=>s+(t.amount||0),0);
+                return { income, expense };
+            }
+            return { income: 0, expense: 0 };
+        }
+
+        function localGetFixedExpenses(companyId, period) {
+            const fixed = ['水电费','工资','租金','网络费','车费'];
+            const list = getPeriodTransactions(companyId, null, period, 0).filter(t => t.type === 'expense');
+            const map = {}; fixed.forEach(k => map[k] = 0);
+            list.forEach(t => { if (fixed.includes(t.category)) map[t.category] += t.amount; });
+            return fixed.map(k => ({ name: k, amount: map[k] }));
+        }
+        function localGetFixedExpensesGroup(groupId, period) {
+            const fixed = ['水电费','工资','租金','网络费','车费'];
+            const companies = Store.getCompaniesByGroup(groupId).map(c => c.id);
+            const map = {}; fixed.forEach(k => map[k] = 0);
+            companies.forEach(cid => { getPeriodTransactions(cid, null, period, 0).filter(t => t.type === 'expense').forEach(t => { if (fixed.includes(t.category)) map[t.category] += t.amount; }); });
+            return fixed.map(k => ({ name: k, amount: map[k] }));
+        }
+        
+        // 更新报表内容
+        function updateReportContent(data) {
+            // 更新标题和期间
+            document.getElementById('reportTitle').textContent = data.title;
+            document.getElementById('reportPeriod').textContent = data.period;
+            
+            // 更新表格内容
+            const tbody = document.getElementById('reportTableBody');
+            tbody.innerHTML = data.data.map(row => `
+                <tr class="hover:bg-gray-50 cursor-pointer detail-row" data-key="${row.item}">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${row.item}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${Utils.formatCurrency(row.current)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${Utils.formatCurrency(row.previous)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="${row.change >= 0 ? 'text-green-600' : 'text-red-600'}">
+                            ${row.change >= 0 ? '+' : ''}${row.change.toFixed(1)}%
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+            document.querySelectorAll('#reportTableBody .detail-row').forEach(tr => {
+                tr.addEventListener('click', function(){
+                    const key = this.dataset.key;
+                    openDetailModal(key);
+                });
+            });
+            
+            // 更新关键指标
+            const keyMetricsContainer = document.getElementById('keyMetrics');
+            keyMetricsContainer.innerHTML = data.keyMetrics.map(metric => {
+                const hasChange = metric.change !== undefined && metric.change !== null;
+                const changeVal = typeof metric.change === 'number' ? `${metric.change >= 0 ? '+' : ''}${metric.change.toFixed(1)}%` : (metric.change || '');
+                const changeClass = !hasChange ? 'text-gray-400' : ((typeof metric.change === 'number' ? metric.change >= 0 : String(metric.change).startsWith('+')) ? 'text-green-600' : 'text-red-600');
+                return `
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">${metric.name}</span>
+                    <div class="text-right">
+                        <div class="text-sm font-medium text-gray-900">${metric.value}</div>
+                        <div class="text-xs ${changeClass}">${changeVal}</div>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            // 更新图表
+            updateChart(data);
+            
+            // 添加动画
+            anime({
+                targets: '#reportTableBody tr',
+                translateX: [-20, 0],
+                opacity: [0, 1],
+                duration: 500,
+                delay: anime.stagger(50),
+                easing: 'easeOutQuart'
+            });
+        }
+        
+        // 更新图表
+        function updateChart(data) {
+            const chartOption = {
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    borderColor: '#e5e7eb',
+                    textStyle: { color: '#374151' }
+                },
+                legend: {
+                    data: ['本月/本期', '上月/上期'],
+                    textStyle: { color: '#6b7280' }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.data.map(item => item.item),
+                    axisLine: { lineStyle: { color: '#e5e7eb' } },
+                    axisTick: { lineStyle: { color: '#e5e7eb' } },
+                    axisLabel: { 
+                        color: '#6b7280',
+                        rotate: 45
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: { lineStyle: { color: '#e5e7eb' } },
+                    axisTick: { lineStyle: { color: '#e5e7eb' } },
+                    axisLabel: { 
+                        color: '#6b7280',
+                        formatter: function(value) {
+                            return '₱' + (value / 10000).toFixed(0) + '万';
+                        }
+                    },
+                    splitLine: { lineStyle: { color: '#f3f4f6' } }
+                },
+                series: [
+                    {
+                        name: '本月/本期',
+                        type: 'bar',
+                        data: data.data.map(item => item.current),
+                        itemStyle: { color: '#3b82f6' },
+                        barWidth: '40%'
+                    },
+                    {
+                        name: '上月/上期',
+                        type: 'bar',
+                        data: data.data.map(item => item.previous),
+                        itemStyle: { color: '#e5e7eb' },
+                        barWidth: '40%'
+                    }
+                ]
+            };
+            
+            reportChart.setOption(chartOption);
+        }
+
+        function openDetailModal(itemKey) {
+            const keyMap = { '总收入': 'income', '总支出': 'expense', '净利润': 'profit' };
+            const mode = keyMap[itemKey] || 'income';
+            const list = getPeriodTransactions(currentCompany === 'all' ? null : currentCompany, currentCompany === 'all' ? currentGroup : null, currentPeriod, 0);
+            let rows = [];
+            if (mode === 'income') rows = list.filter(t => t.type === 'income');
+            else if (mode === 'expense') rows = list.filter(t => t.type === 'expense');
+            else rows = list;
+            document.getElementById('detailTitle').textContent = itemKey + '明细';
+            document.getElementById('detailBody').innerHTML = rows.map(t => `
+                <tr>
+                    <td class="px-4 py-2 text-sm text-gray-900">${t.date}</td>
+                    <td class="px-4 py-2 text-sm text-gray-900">${t.description || ''}</td>
+                    <td class="px-4 py-2 text-sm text-gray-600">${t.category || ''}</td>
+                    <td class="px-4 py-2 text-sm font-medium ${t.type==='income' ? 'text-green-600' : 'text-red-600'}">${t.type==='income' ? '+' : '-'}${Utils.formatCurrency(t.amount || 0)}</td>
+                </tr>
+            `).join('');
+            const modal = document.getElementById('detailModal');
+            modal.classList.remove('hidden');
+            anime({ targets: modal.querySelector('.bg-white'), scale: [0.95,1], opacity: [0,1], duration: 300, easing: 'easeOutBack' });
+        }
+        function closeDetailModal() {
+            const modal = document.getElementById('detailModal');
+            anime({ targets: modal.querySelector('.bg-white'), scale: [1,0.95], opacity: [1,0], duration: 200, easing: 'easeInBack', complete: () => { modal.classList.add('hidden'); } });
+        }
+        document.getElementById('detailModal').addEventListener('click', function(e){ if (e.target === this) closeDetailModal(); });
+        
+        // 加载报表历史
+        function loadReportHistory() {
+            const history = [
+                { date: '2024-01-15', type: '利润表', period: '2024年1月', status: '已生成' },
+                { date: '2024-01-10', type: '现金流量表', period: '2023年12月', status: '已生成' },
+                { date: '2024-01-05', type: '资产负债表', period: '2023年12月', status: '已生成' },
+                { date: '2023-12-20', type: '利润表', period: '2023年11月', status: '已生成' },
+                { date: '2023-12-15', type: '现金流量表', period: '2023年11月', status: '已生成' }
+            ];
+            
+            const historyContainer = document.getElementById('reportHistory');
+            historyContainer.innerHTML = history.map(item => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                        <div class="text-sm font-medium text-gray-900">${item.type}</div>
+                        <div class="text-xs text-gray-500">${item.period}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-500">${item.date}</div>
+                        <div class="text-xs text-green-600">${item.status}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 报表类型选择
+            document.querySelectorAll('.report-template').forEach(template => {
+                template.addEventListener('click', function() {
+                    document.querySelectorAll('.report-template').forEach(t => t.classList.remove('selected'));
+                    this.classList.add('selected');
+                    
+                    currentReportType = this.dataset.report;
+                    if (currentReportType !== 'custom') {
+                        loadReportData();
+                    } else {
+                        showCustomReportOptions();
+                    }
+                });
+            });
+            
+            // 时间期间选择
+            document.getElementById('reportPeriod').addEventListener('change', function() {
+                currentPeriod = this.value;
+                updateReportPeriod(this.value);
+                loadReportData();
+            });
+            document.getElementById('reportCompanySelector').addEventListener('change', function() {
+                currentCompany = this.value;
+                loadReportData();
+            });
+            document.getElementById('reportGroupSelector').addEventListener('change', function() {
+                currentGroup = this.value;
+                loadReportData();
+            });
+        }
+        
+        // 显示自定义报表选项
+        function showCustomReportOptions() {
+            alert('自定义报表功能开发中...');
+        }
+        
+        // 更新报表期间
+        function updateReportPeriod(period) {
+            const periodText = {
+                month: '2024年1月',
+                quarter: '2024年第一季度',
+                year: '2024年度',
+                custom: '自定义期间'
+            };
+            
+            document.getElementById('reportPeriodDisplay').textContent = periodText[period];
+        }
+        
+        // 导出报表
+        function exportReport() {
+            // 模拟导出功能
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 z-50 px-6 py-3 rounded-lg text-white font-medium bg-green-500';
+            notification.textContent = '报表导出成功！';
+            
+            document.body.appendChild(notification);
+            
+            anime({
+                targets: notification,
+                translateX: [300, 0],
+                opacity: [0, 1],
+                duration: 300,
+                easing: 'easeOutBack'
+            });
+            
+            setTimeout(() => {
+                anime({
+                    targets: notification,
+                    translateX: [0, 300],
+                    opacity: [1, 0],
+                    duration: 300,
+                    easing: 'easeInBack',
+                    complete: () => {
+                        document.body.removeChild(notification);
+                    }
+                });
+            }, 3000);
+        }
+        
+        // 侧边栏切换
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('mobile-open');
+        }
+    </script>
+</body>
+</html>
