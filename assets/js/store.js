@@ -483,7 +483,7 @@ const Store = (() => {
     const key = localStorage.getItem('supabase_anon_key');
     if (typeof supabase === 'undefined') return null;
     if (!url || !key) return null;
-    try { return supabase.createClient(url, key); } catch (e) { return null; }
+    try { return supabase.createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } }); } catch (e) { return null; }
   }
   async function syncFromSupabase() {
     const client = _supabase();
